@@ -76,7 +76,10 @@ pub fn map_key(ev: KeyEvent) -> Option<Key> {
     if ev.kind == KeyEventKind::Release {
         return None;
     }
-    let ctrl = ev.modifiers.contains(KeyModifiers::CONTROL);
+    // AltGr arrives as Ctrl+Alt on Windows: with a printable character
+    // that is the character (`@`, `/` on many layouts), not a command.
+    let ctrl =
+        ev.modifiers.contains(KeyModifiers::CONTROL) && !ev.modifiers.contains(KeyModifiers::ALT);
     match ev.code {
         KeyCode::Char(c) if ctrl => match c.to_ascii_lowercase() {
             'r' => Some(Key::Agn),
@@ -313,6 +316,19 @@ pub mod tests {
         );
         assert!(restored > 0, "restore ran");
         assert!(previous > restored, "then the previous hook");
+    }
+
+    #[test]
+    fn altgr_characters_are_copy_not_commands() {
+        let altgr = KeyModifiers::CONTROL | KeyModifiers::ALT;
+        assert_eq!(
+            map_key(press(KeyCode::Char('/'), altgr)),
+            Some(Key::Char('/'))
+        );
+        assert_eq!(
+            map_key(press(KeyCode::Char('r'), altgr)),
+            Some(Key::Char('R'))
+        );
     }
 
     #[test]

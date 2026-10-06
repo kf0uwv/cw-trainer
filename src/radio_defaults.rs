@@ -204,14 +204,25 @@ mod tests {
         // Structural half of the invariant: the radio is reachable only
         // from this file. A later edit threading it into the session would
         // make a write reachable from copy mode; this catches that.
-        let sources = [
-            ("mod.rs", include_str!("mod.rs")),
-            ("session.rs", include_str!("session.rs")),
-            ("audio.rs", include_str!("audio.rs")),
-            ("term.rs", include_str!("term.rs")),
-            ("view.rs", include_str!("view.rs")),
-            ("store.rs", include_str!("store.rs")),
-        ];
+        // Every file in src/cw/ except this one, read at test time so a
+        // file added later is scanned without anyone remembering to.
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/cw");
+        let sources: Vec<(String, String)> = std::fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .filter(|p| p.extension().is_some_and(|x| x == "rs"))
+            .filter(|p| p.file_name().is_some_and(|n| n != "radio_defaults.rs"))
+            .map(|p| {
+                let name = p.file_name().unwrap().to_string_lossy().into_owned();
+                (name, std::fs::read_to_string(&p).unwrap())
+            })
+            .collect();
+        assert!(
+            sources.len() >= 7,
+            "expected the cw sources in {}, found {}",
+            dir.display(),
+            sources.len()
+        );
         let forbidden = [
             "radio::",
             "Ts570d",
@@ -222,7 +233,7 @@ mod tests {
             "set_keyer_speed",
             "set_cw_pitch",
         ];
-        for (name, src) in sources {
+        for (name, src) in &sources {
             for word in forbidden {
                 assert!(
                     !src.contains(word),
