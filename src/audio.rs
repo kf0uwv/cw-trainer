@@ -85,10 +85,18 @@ pub mod tests {
     use super::*;
 
     /// A speaker that plays instantly and remembers everything it played.
+    ///
+    /// Configurable to misbehave like a real one: take only `max_write`
+    /// samples per write, fail once `fail_after` samples have been played,
+    /// and report a scripted sequence of underrun counts.
     pub struct FakeSink {
         pub rate: u32,
         pub played: Vec<f32>,
         pub clears: u32,
+        pub max_write: usize,
+        pub fail_after: Option<usize>,
+        pub underrun_seq: std::cell::RefCell<std::collections::VecDeque<u64>>,
+        last_underruns: std::cell::Cell<u64>,
     }
 
     impl FakeSink {
@@ -97,6 +105,10 @@ pub mod tests {
                 rate,
                 played: Vec::new(),
                 clears: 0,
+                max_write: usize::MAX,
+                fail_after: None,
+                underrun_seq: Default::default(),
+                last_underruns: Default::default(),
             }
         }
     }
@@ -106,14 +118,26 @@ pub mod tests {
             self.rate
         }
         fn write(&mut self, mono: &[f32]) -> Result<usize, String> {
-            self.played.extend_from_slice(mono);
-            Ok(mono.len())
+            if let Some(n) = self.fail_after {
+                if self.played.len() >= n {
+                    return Err("device unplugged".to_string());
+                }
+            }
+            let take = mono.len().min(self.max_write);
+            self.played.extend_from_slice(&mono[..take]);
+            Ok(take)
         }
         fn queued(&self) -> usize {
             0
         }
         fn clear(&mut self) {
             self.clears += 1;
+        }
+        fn underruns(&self) -> u64 {
+            if let Some(v) = self.underrun_seq.borrow_mut().pop_front() {
+                self.last_underruns.set(v);
+            }
+            self.last_underruns.get()
         }
     }
 

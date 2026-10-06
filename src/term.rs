@@ -187,6 +187,9 @@ pub mod tests {
         clock: Duration,
         keys: VecDeque<(Duration, Key)>,
         pub output: Vec<u8>,
+        /// When the script runs out: fail like a vanished terminal
+        /// instead of quitting.
+        pub fail_when_done: bool,
     }
 
     impl ScriptedTerminal {
@@ -196,6 +199,7 @@ pub mod tests {
                 clock: Duration::ZERO,
                 keys: keys.into(),
                 output: Vec::new(),
+                fail_when_done: false,
             }
         }
 
@@ -217,6 +221,7 @@ pub mod tests {
     impl Terminal for ScriptedTerminal {
         fn poll_key(&mut self, timeout: Duration) -> io::Result<Option<Key>> {
             match self.keys.front() {
+                None if self.fail_when_done => Err(io::Error::other("terminal went away")),
                 None => Ok(Some(Key::Quit)),
                 Some(&(at, key)) if at <= self.clock + timeout => {
                     self.clock = self.clock.max(at);
