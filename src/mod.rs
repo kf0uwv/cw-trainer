@@ -41,6 +41,7 @@
 //!   `history.jsonl` is append-only and keeps both.
 
 pub mod audio;
+pub mod output;
 pub mod radio_defaults;
 pub mod session;
 pub mod store;
@@ -199,6 +200,8 @@ pub struct CopyOptions {
     pub adapt: bool,
     /// When the session started (ISO 8601 UTC), for the history file.
     pub started: String,
+    /// The output device's name, shown in the banner and kept in history.
+    pub audio_out: String,
 }
 
 /// The tone and speed a session starts at: an explicit flag wins, then

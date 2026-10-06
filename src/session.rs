@@ -307,6 +307,9 @@ pub struct SessionRecord {
     pub level: String,
     pub call: String,
     pub pitch_hz: f32,
+    /// The output device played to.
+    #[serde(default)]
+    pub audio_out: String,
     pub start_speed: SpeedSetting,
     pub end_speed: SpeedSetting,
     pub overs: Vec<OverResult>,
@@ -509,13 +512,15 @@ pub fn run_copy<S: AudioSink, T: Terminal>(
         term,
         &format!(
             "ts570d cw copy: {} contacts, {}, seed {}, {:.0} Hz, {}{NL}\
+             Playing to: {}{NL}\
              Type what you hear while it plays; Enter submits.{NL}\
              Ctrl-R/F5 AGN (replay)   Ctrl-N/F6 skip   Esc/Ctrl-C quit{NL}",
             opts.kind.name(),
             opts.level.name(),
             opts.seed,
             opts.pitch_hz,
-            start_speed.describe()
+            start_speed.describe(),
+            opts.audio_out
         ),
     )?;
     for w in store.take_warnings() {
@@ -660,6 +665,7 @@ pub fn run_copy<S: AudioSink, T: Terminal>(
         level: opts.level.name().to_string(),
         call: opts.call.as_str().to_string(),
         pitch_hz: opts.pitch_hz,
+        audio_out: opts.audio_out.clone(),
         start_speed,
         end_speed: speed.current,
         overs,
@@ -697,6 +703,7 @@ pub mod tests {
             seed,
             adapt: false,
             started: "2026-10-06T00:00:00Z".to_string(),
+            audio_out: "Test speaker".to_string(),
         }
     }
 
@@ -709,6 +716,7 @@ pub mod tests {
             level: "beginner".to_string(),
             call: "KF0UWV".to_string(),
             pitch_hz: 600.0,
+            audio_out: "Test speaker".to_string(),
             start_speed: SpeedSetting {
                 char_wpm: 20,
                 effective_wpm: Some(10),

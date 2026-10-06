@@ -18,6 +18,7 @@
 //! |------|------|---------|
 //! | `stats.json` | `{ "version": 1, "stats": CharStats }`, all time | atomically, after every QSO |
 //! | `history.jsonl` | one [`SessionRecord`] per line | appended at session end |
+//! | `audio.json` | `{ "version": 1, "device": .., "deny": [..] }` — see [`super::output`] | when the choice or deny list changes |
 //!
 //! **Nothing here can stop a session.** A missing directory is created on
 //! the first save. A `stats.json` that cannot be read — corrupt, or from a
@@ -34,6 +35,7 @@ use std::path::{Path, PathBuf};
 use cat_morse::CharStats;
 use serde::{Deserialize, Serialize};
 
+use super::output::AudioPrefs;
 use super::session::SessionRecord;
 
 /// The version this program writes and reads.
@@ -41,6 +43,14 @@ pub const STATS_VERSION: u32 = 1;
 
 const STATS_FILE: &str = "stats.json";
 const HISTORY_FILE: &str = "history.jsonl";
+const AUDIO_FILE: &str = "audio.json";
+
+#[derive(Serialize, Deserialize)]
+struct AudioFile {
+    version: u32,
+    #[serde(flatten)]
+    prefs: AudioPrefs,
+}
 
 #[derive(Serialize, Deserialize)]
 struct StatsFile {
@@ -80,6 +90,8 @@ pub struct Store {
     /// `false` when an unreadable `stats.json` could not be moved aside:
     /// then it must not be overwritten either, so stats are not saved.
     stats_writable: bool,
+    audio: AudioPrefs,
+    audio_writable: bool,
     warnings: Vec<String>,
 }
 
@@ -135,6 +147,8 @@ impl Store {
             dir,
             baseline: CharStats::new(),
             stats_writable: true,
+            audio: AudioPrefs::default(),
+            audio_writable: true,
             warnings: Vec::new(),
         };
         let Some(dir) = store.dir.clone() else {
@@ -152,7 +166,43 @@ impl Store {
                 store.warnings.push(w);
             }
         }
+        match load(&dir.join(AUDIO_FILE), parse_audio, rename) {
+            Loaded::Missing => {}
+            Loaded::Read(prefs) => store.audio = prefs,
+            Loaded::SetAside(w) => store.warnings.push(w),
+            Loaded::Stuck(w) => {
+                store.audio_writable = false;
+                store.warnings.push(w);
+            }
+        }
         store
+    }
+
+    /// The remembered audio output and deny list.
+    pub fn audio_prefs(&self) -> &AudioPrefs {
+        &self.audio
+    }
+
+    /// Remember `prefs` (written only if they changed).
+    pub fn save_audio_prefs(&mut self, prefs: AudioPrefs) {
+        if prefs == self.audio {
+            return;
+        }
+        self.audio = prefs;
+        let Some(dir) = self.dir.clone() else { return };
+        if !self.audio_writable {
+            return;
+        }
+        let file = AudioFile {
+            version: STATS_VERSION,
+            prefs: self.audio.clone(),
+        };
+        if let Err(e) = write_atomic(&dir, AUDIO_FILE, &file) {
+            self.warnings.push(format!(
+                "could not remember the audio choice in {}: {e}",
+                dir.display()
+            ));
+        }
     }
 
     /// Warnings collected since the last call, for the operator.
@@ -253,6 +303,18 @@ fn parse_stats(bytes: &[u8]) -> Result<CharStats, String> {
         ));
     }
     Ok(file.stats)
+}
+
+fn parse_audio(bytes: &[u8]) -> Result<AudioPrefs, String> {
+    let text = std::str::from_utf8(bytes).map_err(|e| format!("not UTF-8: {e}"))?;
+    let file: AudioFile = serde_json::from_str(text).map_err(|e| e.to_string())?;
+    if file.version != STATS_VERSION {
+        return Err(format!(
+            "version {} is not {STATS_VERSION}; written by a different ts570d",
+            file.version
+        ));
+    }
+    Ok(file.prefs)
 }
 
 /// Rename an unreadable file out of the way, keeping it for a human. The
@@ -396,6 +458,32 @@ mod tests {
             Store::open(Some(tmp.path().to_path_buf())).all_time(&CharStats::new()),
             some_stats()
         );
+    }
+
+    #[test]
+    fn the_audio_choice_and_deny_list_are_remembered() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut store = Store::open(Some(tmp.path().to_path_buf()));
+        assert_eq!(store.audio_prefs(), &AudioPrefs::default());
+        store.save_audio_prefs(AudioPrefs {
+            device: Some("audio:Headphones".into()),
+            deny: vec!["USB PnP".into()],
+        });
+        let again = Store::open(Some(tmp.path().to_path_buf()));
+        assert_eq!(
+            again.audio_prefs().device.as_deref(),
+            Some("audio:Headphones")
+        );
+        assert_eq!(again.audio_prefs().deny, vec!["USB PnP".to_string()]);
+    }
+
+    #[test]
+    fn an_unreadable_audio_file_forgets_the_choice_rather_than_guessing() {
+        let tmp = tempfile::tempdir().unwrap();
+        fs::write(tmp.path().join(AUDIO_FILE), "{\"device\":").unwrap();
+        let mut store = Store::open(Some(tmp.path().to_path_buf()));
+        assert_eq!(store.take_warnings().len(), 1);
+        assert_eq!(store.audio_prefs(), &AudioPrefs::default());
     }
 
     #[test]
