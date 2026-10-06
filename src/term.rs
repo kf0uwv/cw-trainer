@@ -19,8 +19,27 @@
 //! one input line, not a console, so this is crossterm alone rather than
 //! ratatui. Output written in raw mode needs `\r\n`; every string the
 //! session writes uses it.
+//!
+//! # Leaving raw mode, however the program ends
+//!
+//! A terminal left in raw mode is unusable until `reset`, so raw mode is
+//! undone on every way out, not only the happy one:
+//!
+//! - **Normal exit, and `Esc`/`Ctrl-C`:** [`CrosstermTerminal`]'s `Drop`.
+//! - **A panic:** the release profile is `panic = "abort"`, so `Drop` never
+//!   runs. [`chain_panic_hook`] restores the terminal *before* the previous
+//!   (default) hook prints the message, so the message is readable.
+//! - **SIGTERM, SIGHUP, SIGINT** (Unix) and **console close, logoff,
+//!   shutdown, Ctrl-Break** (Windows): a `ctrlc` handler (its `termination`
+//!   feature) drops raw mode at once and raises a flag that
+//!   [`CrosstermTerminal::poll_key`] turns into [`Key::Quit`] within one
+//!   poll, so the session ends the ordinary way — summary, stats and
+//!   history saved. On Windows the process may be killed as soon as the
+//!   handler returns; restoring the console first is what makes that safe.
 
 use std::io::{self, Write};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Once;
 use std::time::{Duration, Instant};
 
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -75,6 +94,27 @@ pub fn map_key(ev: KeyEvent) -> Option<Key> {
     }
 }
 
+/// Set by the termination handler; sticky, so every later poll quits too.
+static TERMINATE: AtomicBool = AtomicBool::new(false);
+
+/// Run `restore` on any panic, then whatever hook was there before.
+pub fn chain_panic_hook(restore: impl Fn() + Send + Sync + 'static) {
+    let previous = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        restore();
+        previous(info);
+    }));
+}
+
+/// A key the termination flag forces, if it is up.
+fn forced_quit(flag: &AtomicBool) -> Option<Key> {
+    flag.load(Ordering::SeqCst).then_some(Key::Quit)
+}
+
+fn restore_terminal() {
+    let _ = crossterm::terminal::disable_raw_mode();
+}
+
 /// The real terminal. Raw mode is on for as long as this lives.
 pub struct CrosstermTerminal {
     stdout: io::Stdout,
@@ -82,6 +122,16 @@ pub struct CrosstermTerminal {
 
 impl CrosstermTerminal {
     pub fn new() -> io::Result<Self> {
+        static HOOKS: Once = Once::new();
+        HOOKS.call_once(|| {
+            chain_panic_hook(restore_terminal);
+            // Fails only if a handler is already set in this process; the
+            // panic hook and Drop still cover the terminal then.
+            let _ = ctrlc::set_handler(|| {
+                restore_terminal();
+                TERMINATE.store(true, Ordering::SeqCst);
+            });
+        });
         crossterm::terminal::enable_raw_mode()?;
         Ok(CrosstermTerminal {
             stdout: io::stdout(),
@@ -99,8 +149,11 @@ impl Drop for CrosstermTerminal {
 impl Terminal for CrosstermTerminal {
     fn poll_key(&mut self, timeout: Duration) -> io::Result<Option<Key>> {
         let _ = self.stdout.flush();
+        if let Some(k) = forced_quit(&TERMINATE) {
+            return Ok(Some(k));
+        }
         if !event::poll(timeout)? {
-            return Ok(None);
+            return Ok(forced_quit(&TERMINATE));
         }
         match event::read()? {
             Event::Key(k) => Ok(map_key(k)),
@@ -214,6 +267,47 @@ pub mod tests {
             Some(Key::Backspace)
         );
         assert_eq!(map_key(press(KeyCode::Up, none)), None);
+    }
+
+    #[test]
+    fn a_termination_signal_becomes_quit_and_stays_quit() {
+        let flag = AtomicBool::new(false);
+        assert_eq!(forced_quit(&flag), None);
+        flag.store(true, Ordering::SeqCst);
+        assert_eq!(forced_quit(&flag), Some(Key::Quit));
+        assert_eq!(forced_quit(&flag), Some(Key::Quit));
+    }
+
+    #[test]
+    fn a_panic_restores_the_terminal_before_the_previous_hook_runs() {
+        use std::sync::atomic::AtomicUsize;
+        use std::sync::Arc;
+
+        static ORDER: AtomicUsize = AtomicUsize::new(0);
+        let restored_at = Arc::new(AtomicUsize::new(0));
+        let previous_at = Arc::new(AtomicUsize::new(0));
+        let original = std::panic::take_hook();
+        {
+            let previous_at = previous_at.clone();
+            std::panic::set_hook(Box::new(move |_| {
+                previous_at.store(ORDER.fetch_add(1, Ordering::SeqCst) + 1, Ordering::SeqCst);
+            }));
+        }
+        {
+            let restored_at = restored_at.clone();
+            chain_panic_hook(move || {
+                restored_at.store(ORDER.fetch_add(1, Ordering::SeqCst) + 1, Ordering::SeqCst);
+            });
+        }
+        let r = std::panic::catch_unwind(|| panic!("boom"));
+        std::panic::set_hook(original);
+        assert!(r.is_err());
+        let (restored, previous) = (
+            restored_at.load(Ordering::SeqCst),
+            previous_at.load(Ordering::SeqCst),
+        );
+        assert!(restored > 0, "restore ran");
+        assert!(previous > restored, "then the previous hook");
     }
 
     #[test]
