@@ -261,23 +261,19 @@ pub fn group_overs(script: &Script) -> Vec<Over<'_>> {
 }
 
 /// What is expected from one *them* over: the text, or (several stations
-/// at once) each station's call, in any order.
-pub fn expected_for(script: &Script, lines: &[&Transmission]) -> Vec<String> {
+/// at once) every word that was actually sent, to be copied in any order.
+///
+/// Every word, not each call once: a pileup caller often sends his call
+/// twice (`W1ABC W1ABC`), and a faithful copy of that must score clean —
+/// otherwise good copy reads as insertions and drags the speed down.
+pub fn expected_for(lines: &[&Transmission]) -> Vec<String> {
     if lines.len() == 1 {
         return vec![lines[0].text.clone()];
     }
-    let mut calls: Vec<String> = Vec::new();
-    for l in lines {
-        if let Party::Them(i) = l.from {
-            if let Some(s) = script.stations.get(i) {
-                let c = s.persona.call.as_str().to_string();
-                if !calls.contains(&c) {
-                    calls.push(c);
-                }
-            }
-        }
-    }
-    calls
+    lines
+        .iter()
+        .flat_map(|l| l.text.split_whitespace().map(String::from))
+        .collect()
 }
 
 /// One over's result, as kept in the history.
@@ -577,7 +573,7 @@ pub fn run_copy<S: AudioSink, T: Terminal>(
                             i + 1,
                             sig.char_wpm(),
                             if several {
-                                " several stations: copy every call you hear"
+                                " several stations: copy everything you hear, any order"
                             } else {
                                 ""
                             }
@@ -587,7 +583,7 @@ pub fn run_copy<S: AudioSink, T: Terminal>(
                     if copied.clipped > 0 {
                         gain *= 0.8;
                     }
-                    let expected = expected_for(&plan.script, lines);
+                    let expected = expected_for(lines);
                     let mut result = OverResult {
                         qso: q + 1,
                         kind: plan.label.to_string(),
@@ -753,7 +749,7 @@ pub mod tests {
             match over {
                 Over::You(_) => keys.push((Duration::ZERO, Key::Enter)),
                 Over::Them { lines, .. } => {
-                    let text = expected_for(&plan.script, &lines).join(" ");
+                    let text = expected_for(&lines).join(" ");
                     keys.extend(ScriptedTerminal::typed(&[&text]));
                 }
             }
@@ -818,7 +814,28 @@ pub mod tests {
         assert_eq!(lines.len(), starts.len());
         assert!(starts.windows(2).all(|w| w[0] <= w[1]));
         assert_eq!(starts[0], Duration::ZERO);
-        assert!(expected_for(&plan.script, lines).len() >= 2);
+        assert!(expected_for(lines).len() >= 2);
+    }
+
+    #[test]
+    fn a_call_sent_twice_in_a_pileup_is_expected_twice() {
+        // The reviewer's case: a faithful copy of what was sent is clean,
+        // in any order.
+        let line = |text: &str| Transmission {
+            from: Party::Them(0),
+            text: text.to_string(),
+            start: Start::AfterPrevious {
+                gap: Duration::ZERO,
+            },
+        };
+        let (a, b) = (line("W1ABC W1ABC"), line("K2XYZ"));
+        let expected = expected_for(&[&a, &b]);
+        assert_eq!(expected, vec!["W1ABC", "W1ABC", "K2XYZ"]);
+        let refs: Vec<&str> = expected.iter().map(String::as_str).collect();
+        for copy in ["W1ABC W1ABC K2XYZ", "K2XYZ W1ABC W1ABC"] {
+            let u = align_unordered(&refs, copy, &ScoreOptions::default()).unwrap();
+            assert_eq!(u.score().cer(), 0.0, "{copy}");
+        }
     }
 
     // --- adaptive speed ---------------------------------------------------
@@ -1020,7 +1037,7 @@ pub mod tests {
             match over {
                 Over::You(_) => keys.push((Duration::ZERO, Key::Enter)),
                 Over::Them { lines, .. } => {
-                    let mut calls = expected_for(&plan.script, &lines);
+                    let mut calls = expected_for(&lines);
                     calls.reverse();
                     keys.extend(ScriptedTerminal::typed(&[&calls.join(" ")]));
                 }
@@ -1029,7 +1046,7 @@ pub mod tests {
         let (r, _, out) = run(&opts, keys);
         assert!(r.overs.iter().any(|o| o.expected.len() > 1));
         assert_eq!(r.total.cer(), 0.0, "{out}");
-        assert!(out.contains("copy every call"));
+        assert!(out.contains("copy everything you hear"));
     }
 
     #[test]
