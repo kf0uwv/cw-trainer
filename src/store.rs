@@ -77,41 +77,79 @@ pub fn default_data_dir() -> Option<PathBuf> {
 pub struct Store {
     dir: Option<PathBuf>,
     baseline: CharStats,
+    /// `false` when an unreadable `stats.json` could not be moved aside:
+    /// then it must not be overwritten either, so stats are not saved.
+    stats_writable: bool,
     warnings: Vec<String>,
+}
+
+/// How a file on disk turned out.
+enum Loaded<T> {
+    Missing,
+    Read(T),
+    /// Unreadable and moved aside; start fresh and write normally.
+    SetAside(String),
+    /// Unreadable and could not be moved; start fresh, never write it.
+    Stuck(String),
+}
+
+type Rename = fn(&Path, &Path) -> std::io::Result<()>;
+
+/// Read and parse `path`. Any failure on a file that exists — unreadable
+/// bytes, invalid UTF-8, bad JSON, another version — moves it aside so it
+/// is kept for a human and never overwritten.
+fn load<T>(path: &Path, parse: impl Fn(&[u8]) -> Result<T, String>, rename: Rename) -> Loaded<T> {
+    let why = match fs::read(path) {
+        // Nothing there (or nothing reachable to set aside): fresh.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound || !path.exists() => {
+            return Loaded::Missing
+        }
+        Err(e) => e.to_string(),
+        Ok(bytes) => match parse(&bytes) {
+            Ok(v) => return Loaded::Read(v),
+            Err(why) => why,
+        },
+    };
+    match set_aside(path, rename) {
+        Ok(aside) => Loaded::SetAside(format!(
+            "{} could not be read ({why}); moved to {} and starting fresh",
+            path.display(),
+            aside.display()
+        )),
+        Err(e) => Loaded::Stuck(format!(
+            "{} could not be read ({why}) and could not be moved aside ({e}); starting fresh \
+             and NOT saving over it this session",
+            path.display()
+        )),
+    }
 }
 
 impl Store {
     /// Load from `dir` (`None`: run without saving). Never fails.
     pub fn open(dir: Option<PathBuf>) -> Store {
+        Store::open_with(dir, |a, b| fs::rename(a, b))
+    }
+
+    fn open_with(dir: Option<PathBuf>, rename: Rename) -> Store {
         let mut store = Store {
             dir,
             baseline: CharStats::new(),
+            stats_writable: true,
             warnings: Vec::new(),
         };
-        match &store.dir {
-            None => store
+        let Some(dir) = store.dir.clone() else {
+            store
                 .warnings
-                .push("no home directory found; this session will not be saved".to_string()),
-            Some(dir) => {
-                let path = dir.join(STATS_FILE);
-                match fs::read_to_string(&path) {
-                    Ok(text) => match parse_stats(&text) {
-                        Ok(stats) => store.baseline = stats,
-                        Err(why) => {
-                            let aside = set_aside(&path);
-                            store.warnings.push(format!(
-                                "{} could not be read ({why}); moved to {} and starting fresh stats",
-                                path.display(),
-                                aside.display()
-                            ));
-                        }
-                    },
-                    Err(e) if e.kind() == std::io::ErrorKind::NotFound => {}
-                    Err(e) => store.warnings.push(format!(
-                        "{} could not be read ({e}); starting fresh stats",
-                        path.display()
-                    )),
-                }
+                .push("no home directory found; this session will not be saved".to_string());
+            return store;
+        };
+        match load(&dir.join(STATS_FILE), parse_stats, rename) {
+            Loaded::Missing => {}
+            Loaded::Read(stats) => store.baseline = stats,
+            Loaded::SetAside(w) => store.warnings.push(w),
+            Loaded::Stuck(w) => {
+                store.stats_writable = false;
+                store.warnings.push(w);
             }
         }
         store
@@ -132,18 +170,14 @@ impl Store {
     /// Write the all-time stats (baseline + `session`) atomically.
     pub fn save_stats(&mut self, session: &CharStats) {
         let Some(dir) = self.dir.clone() else { return };
+        if !self.stats_writable {
+            return;
+        }
         let file = StatsFile {
             version: STATS_VERSION,
             stats: self.all_time(session),
         };
-        let result = (|| -> std::io::Result<()> {
-            fs::create_dir_all(&dir)?;
-            let tmp = dir.join(format!("{STATS_FILE}.tmp"));
-            let json = serde_json::to_string_pretty(&file).map_err(std::io::Error::other)?;
-            fs::write(&tmp, json)?;
-            fs::rename(&tmp, dir.join(STATS_FILE))
-        })();
-        if let Err(e) = result {
+        if let Err(e) = write_atomic(&dir, STATS_FILE, &file) {
             self.warnings
                 .push(format!("could not save stats in {}: {e}", dir.display()));
         }
@@ -159,7 +193,8 @@ impl Store {
                 .create(true)
                 .append(true)
                 .open(dir.join(HISTORY_FILE))?;
-            writeln!(f, "{line}")
+            writeln!(f, "{line}")?;
+            f.sync_all()
         })();
         if let Err(e) = result {
             self.warnings
@@ -172,16 +207,44 @@ impl Store {
         let Some(dir) = &self.dir else {
             return Vec::new();
         };
-        let Ok(text) = fs::read_to_string(dir.join(HISTORY_FILE)) else {
+        let Ok(bytes) = fs::read(dir.join(HISTORY_FILE)) else {
             return Vec::new();
         };
-        text.lines()
+        String::from_utf8_lossy(&bytes)
+            .lines()
             .filter_map(|l| serde_json::from_str::<SessionRecord>(l).ok())
             .collect()
     }
 }
 
-fn parse_stats(text: &str) -> Result<CharStats, String> {
+/// Write `value` as `dir/name` via a temporary file unique to this
+/// process, synced to disk before it is renamed into place.
+fn write_atomic<T: Serialize>(dir: &Path, name: &str, value: &T) -> std::io::Result<()> {
+    fs::create_dir_all(dir)?;
+    let tmp = dir.join(format!("{name}.tmp-{}-{}", std::process::id(), nanos()));
+    let result = (|| {
+        let json = serde_json::to_vec_pretty(value).map_err(std::io::Error::other)?;
+        let mut f = fs::File::create(&tmp)?;
+        f.write_all(&json)?;
+        f.sync_all()?;
+        drop(f);
+        fs::rename(&tmp, dir.join(name))
+    })();
+    if result.is_err() {
+        let _ = fs::remove_file(&tmp);
+    }
+    result
+}
+
+fn nanos() -> u128 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0)
+}
+
+fn parse_stats(bytes: &[u8]) -> Result<CharStats, String> {
+    let text = std::str::from_utf8(bytes).map_err(|e| format!("not UTF-8: {e}"))?;
     let file: StatsFile = serde_json::from_str(text).map_err(|e| e.to_string())?;
     if file.version != STATS_VERSION {
         return Err(format!(
@@ -192,17 +255,26 @@ fn parse_stats(text: &str) -> Result<CharStats, String> {
     Ok(file.stats)
 }
 
-/// Rename an unreadable file out of the way, keeping it for a human.
-fn set_aside(path: &Path) -> PathBuf {
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    let mut name = path.file_name().map(OsString::from).unwrap_or_default();
-    name.push(format!(".unreadable-{secs}"));
-    let aside = path.with_file_name(name);
-    let _ = fs::rename(path, &aside);
-    aside
+/// Rename an unreadable file out of the way, keeping it for a human. The
+/// new name is unique even for two set-asides in the same second.
+fn set_aside(path: &Path, rename: Rename) -> std::io::Result<PathBuf> {
+    let base = path.file_name().map(OsString::from).unwrap_or_default();
+    let stamp = nanos();
+    let mut n = 0u32;
+    let aside = loop {
+        let mut name = base.clone();
+        name.push(format!(".unreadable-{stamp}"));
+        if n > 0 {
+            name.push(format!("-{n}"));
+        }
+        let candidate = path.with_file_name(name);
+        if !candidate.exists() {
+            break candidate;
+        }
+        n += 1;
+    };
+    rename(path, &aside)?;
+    Ok(aside)
 }
 
 #[cfg(test)]
@@ -324,6 +396,64 @@ mod tests {
             Store::open(Some(tmp.path().to_path_buf())).all_time(&CharStats::new()),
             some_stats()
         );
+    }
+
+    #[test]
+    fn non_utf8_stats_are_set_aside_not_overwritten() {
+        let tmp = tempfile::tempdir().unwrap();
+        let junk = [0xffu8, 0xfe, b'{', 0x80];
+        fs::write(tmp.path().join(STATS_FILE), junk).unwrap();
+        let mut store = Store::open(Some(tmp.path().to_path_buf()));
+        assert_eq!(store.take_warnings().len(), 1);
+        store.save_stats(&some_stats());
+        let aside = fs::read_dir(tmp.path())
+            .unwrap()
+            .map(|e| e.unwrap().path())
+            .find(|p| p.to_string_lossy().contains("unreadable"))
+            .expect("set aside");
+        assert_eq!(fs::read(aside).unwrap(), junk);
+    }
+
+    #[test]
+    fn a_file_that_cannot_be_moved_aside_is_never_overwritten() {
+        let tmp = tempfile::tempdir().unwrap();
+        fs::write(tmp.path().join(STATS_FILE), "garbage").unwrap();
+        let mut store = Store::open_with(Some(tmp.path().to_path_buf()), |_, _| {
+            Err(std::io::Error::other("read-only medium"))
+        });
+        let w = store.take_warnings();
+        assert!(w[0].contains("NOT saving"), "{w:?}");
+        store.save_stats(&some_stats());
+        assert_eq!(
+            fs::read_to_string(tmp.path().join(STATS_FILE)).unwrap(),
+            "garbage"
+        );
+    }
+
+    #[test]
+    fn two_set_asides_never_collide() {
+        let tmp = tempfile::tempdir().unwrap();
+        let path = tmp.path().join(STATS_FILE);
+        fs::write(&path, "one").unwrap();
+        let a = set_aside(&path, |a, b| fs::rename(a, b)).unwrap();
+        fs::write(&path, "two").unwrap();
+        let b = set_aside(&path, |a, b| fs::rename(a, b)).unwrap();
+        assert_ne!(a, b);
+        assert_eq!(fs::read_to_string(a).unwrap(), "one");
+        assert_eq!(fs::read_to_string(b).unwrap(), "two");
+    }
+
+    #[test]
+    fn saving_leaves_no_temporary_files_behind() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut store = Store::open(Some(tmp.path().to_path_buf()));
+        store.save_stats(&some_stats());
+        store.save_stats(&some_stats());
+        let names: Vec<_> = fs::read_dir(tmp.path())
+            .unwrap()
+            .map(|e| e.unwrap().file_name().into_string().unwrap())
+            .collect();
+        assert_eq!(names, vec![STATS_FILE.to_string()]);
     }
 
     #[test]
