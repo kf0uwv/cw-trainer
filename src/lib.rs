@@ -17,6 +17,8 @@
 //! A cat-native *client* of any radio-cat-rs radio's server. Bootstrap
 //! only so far; the trainer itself moves here from `ts570d cw`.
 
+pub mod time;
+
 /// The program's name as it appears on the command line.
 pub const PROGRAM: &str = "cw-trainer";
 
