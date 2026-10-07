@@ -60,9 +60,9 @@ struct StatsFile {
 
 /// Where the trainer keeps its files.
 ///
-/// Linux and other Unix: `$XDG_DATA_HOME/ts570d/cw`, else
-/// `$HOME/.local/share/ts570d/cw`. Windows: `%APPDATA%\ts570d\cw`, else
-/// `%USERPROFILE%\AppData\Roaming\ts570d\cw`. `None` when the environment
+/// Linux and other Unix: `$XDG_DATA_HOME/cw-trainer`, else
+/// `$HOME/.local/share/cw-trainer`. Windows: `%APPDATA%\cw-trainer`, else
+/// `%USERPROFILE%\AppData\Roaming\cw-trainer`. `None` when the environment
 /// names no home at all; the session then runs without saving.
 pub fn data_dir_from(env: impl Fn(&str) -> Option<OsString>, windows: bool) -> Option<PathBuf> {
     let nonempty = |k: &str| env(k).filter(|v| !v.is_empty());
@@ -75,7 +75,7 @@ pub fn data_dir_from(env: impl Fn(&str) -> Option<OsString>, windows: bool) -> O
             .map(PathBuf::from)
             .or_else(|| nonempty("HOME").map(|h| PathBuf::from(h).join(".local").join("share")))?
     };
-    Some(base.join("ts570d").join("cw"))
+    Some(base.join(crate::PROGRAM))
 }
 
 /// [`data_dir_from`] for this process and platform.
@@ -298,7 +298,7 @@ fn parse_stats(bytes: &[u8]) -> Result<CharStats, String> {
     let file: StatsFile = serde_json::from_str(text).map_err(|e| e.to_string())?;
     if file.version != STATS_VERSION {
         return Err(format!(
-            "version {} is not {STATS_VERSION}; written by a different ts570d",
+            "version {} is not {STATS_VERSION}; written by a different cw-trainer",
             file.version
         ));
     }
@@ -310,7 +310,7 @@ fn parse_audio(bytes: &[u8]) -> Result<AudioPrefs, String> {
     let file: AudioFile = serde_json::from_str(text).map_err(|e| e.to_string())?;
     if file.version != STATS_VERSION {
         return Err(format!(
-            "version {} is not {STATS_VERSION}; written by a different ts570d",
+            "version {} is not {STATS_VERSION}; written by a different cw-trainer",
             file.version
         ));
     }
@@ -365,20 +365,20 @@ mod tests {
     #[test]
     fn linux_prefers_xdg_data_home_then_home() {
         let d = data_dir_from(env(&[("XDG_DATA_HOME", "/x"), ("HOME", "/h")]), false);
-        assert_eq!(d, Some(PathBuf::from("/x/ts570d/cw")));
+        assert_eq!(d, Some(PathBuf::from("/x/cw-trainer")));
         let d = data_dir_from(env(&[("HOME", "/h")]), false);
-        assert_eq!(d, Some(PathBuf::from("/h/.local/share/ts570d/cw")));
+        assert_eq!(d, Some(PathBuf::from("/h/.local/share/cw-trainer")));
         let d = data_dir_from(env(&[("XDG_DATA_HOME", ""), ("HOME", "/h")]), false);
-        assert_eq!(d, Some(PathBuf::from("/h/.local/share/ts570d/cw")));
+        assert_eq!(d, Some(PathBuf::from("/h/.local/share/cw-trainer")));
         assert_eq!(data_dir_from(env(&[]), false), None);
     }
 
     #[test]
     fn windows_uses_appdata_then_the_profile() {
         let d = data_dir_from(env(&[("APPDATA", "/r"), ("HOME", "/h")]), true);
-        assert_eq!(d, Some(PathBuf::from("/r/ts570d/cw")));
+        assert_eq!(d, Some(PathBuf::from("/r/cw-trainer")));
         let d = data_dir_from(env(&[("USERPROFILE", "/u")]), true);
-        assert_eq!(d, Some(PathBuf::from("/u/AppData/Roaming/ts570d/cw")));
+        assert_eq!(d, Some(PathBuf::from("/u/AppData/Roaming/cw-trainer")));
         assert_eq!(data_dir_from(env(&[("HOME", "/h")]), true), None);
     }
 
@@ -550,7 +550,9 @@ mod tests {
         let newer = "{\"version\":2,\"stats\":{\"units\":[]}}";
         fs::write(tmp.path().join(STATS_FILE), newer).unwrap();
         let mut store = Store::open(Some(tmp.path().to_path_buf()));
-        assert_eq!(store.take_warnings().len(), 1);
+        let warnings = store.take_warnings();
+        assert_eq!(warnings.len(), 1);
+        assert!(warnings[0].contains("different cw-trainer"), "{warnings:?}");
         let aside = fs::read_dir(tmp.path())
             .unwrap()
             .map(|e| e.unwrap().path())
