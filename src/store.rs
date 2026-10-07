@@ -41,9 +41,9 @@ use super::session::SessionRecord;
 /// The version this program writes and reads.
 pub const STATS_VERSION: u32 = 1;
 
-const STATS_FILE: &str = "stats.json";
-const HISTORY_FILE: &str = "history.jsonl";
-const AUDIO_FILE: &str = "audio.json";
+pub(crate) const STATS_FILE: &str = "stats.json";
+pub(crate) const HISTORY_FILE: &str = "history.jsonl";
+pub(crate) const AUDIO_FILE: &str = "audio.json";
 
 #[derive(Serialize, Deserialize)]
 struct AudioFile {
@@ -293,7 +293,7 @@ fn nanos() -> u128 {
         .unwrap_or(0)
 }
 
-fn parse_stats(bytes: &[u8]) -> Result<CharStats, String> {
+pub(crate) fn parse_stats(bytes: &[u8]) -> Result<CharStats, String> {
     let text = std::str::from_utf8(bytes).map_err(|e| format!("not UTF-8: {e}"))?;
     let file: StatsFile = serde_json::from_str(text).map_err(|e| e.to_string())?;
     if file.version != STATS_VERSION {
@@ -305,7 +305,7 @@ fn parse_stats(bytes: &[u8]) -> Result<CharStats, String> {
     Ok(file.stats)
 }
 
-fn parse_audio(bytes: &[u8]) -> Result<AudioPrefs, String> {
+pub(crate) fn parse_audio(bytes: &[u8]) -> Result<AudioPrefs, String> {
     let text = std::str::from_utf8(bytes).map_err(|e| format!("not UTF-8: {e}"))?;
     let file: AudioFile = serde_json::from_str(text).map_err(|e| e.to_string())?;
     if file.version != STATS_VERSION {

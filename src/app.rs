@@ -35,7 +35,34 @@ use crate::{resolve_tone_and_speed, CopyOptions, RadioDefaults};
 
 /// Open the data directory and apply `--deny-audio`/`--undeny-audio`.
 pub fn open_store(audio: &AudioArgs) -> Store {
-    let dir = audio.data_dir.clone().or_else(default_data_dir);
+    open_store_with(
+        audio,
+        default_data_dir(),
+        crate::migrate::default_legacy_data_dir(),
+        &mut |line| eprintln!("{line}"),
+    )
+}
+
+/// [`open_store`] with the default and legacy directories given, so the
+/// one-time carry-over from `ts570d cw` is testable. An explicit
+/// `--data-dir` never migrates.
+pub fn open_store_with(
+    audio: &AudioArgs,
+    default_dir: Option<std::path::PathBuf>,
+    legacy_dir: Option<std::path::PathBuf>,
+    report: &mut dyn FnMut(String),
+) -> Store {
+    let dir = match &audio.data_dir {
+        Some(d) => Some(d.clone()),
+        None => {
+            if let (Some(new), Some(old)) = (&default_dir, &legacy_dir) {
+                for line in crate::migrate::migrate(old, new).lines(old, new) {
+                    report(line);
+                }
+            }
+            default_dir
+        }
+    };
     let mut store = Store::open(dir);
     let mut prefs = store.audio_prefs().clone();
     if prefs.edit_deny(&audio.deny, &audio.undeny) {
@@ -351,5 +378,58 @@ mod tests {
         assert_eq!(store.audio_prefs().deny, vec!["PnP".to_string()]);
         let again = Store::open(Some(tmp.path().to_path_buf()));
         assert_eq!(again.audio_prefs().deny, vec!["PnP".to_string()]);
+    }
+
+    fn legacy_with_deny(root: &std::path::Path) -> std::path::PathBuf {
+        let old = root.join("ts570d").join("cw");
+        std::fs::create_dir_all(&old).unwrap();
+        std::fs::write(
+            old.join("audio.json"),
+            "{\"version\":1,\"device\":null,\"deny\":[\"USB PnP\"]}",
+        )
+        .unwrap();
+        old
+    }
+
+    #[test]
+    fn the_first_run_carries_the_old_deny_list_over() {
+        let tmp = tempfile::tempdir().unwrap();
+        let old = legacy_with_deny(tmp.path());
+        let new = tmp.path().join("cw-trainer");
+        let mut lines = Vec::new();
+        let store = open_store_with(
+            &AudioArgs::default(),
+            Some(new.clone()),
+            Some(old.clone()),
+            &mut |l| lines.push(l),
+        );
+        assert_eq!(store.audio_prefs().deny, vec!["USB PnP".to_string()]);
+        assert!(new.join("audio.json").exists());
+        assert!(old.join("audio.json").exists(), "copied, not moved");
+        assert!(
+            lines.iter().any(|l| l.contains("copied audio.json")),
+            "{lines:?}"
+        );
+    }
+
+    #[test]
+    fn an_explicit_data_dir_never_migrates() {
+        let tmp = tempfile::tempdir().unwrap();
+        let old = legacy_with_deny(tmp.path());
+        let new = tmp.path().join("cw-trainer");
+        let chosen = tmp.path().join("mine");
+        let mut lines = Vec::new();
+        let store = open_store_with(
+            &AudioArgs {
+                data_dir: Some(chosen.clone()),
+                ..AudioArgs::default()
+            },
+            Some(new.clone()),
+            Some(old),
+            &mut |l| lines.push(l),
+        );
+        assert!(store.audio_prefs().deny.is_empty());
+        assert!(!new.exists() && !chosen.exists());
+        assert!(lines.is_empty(), "{lines:?}");
     }
 }
