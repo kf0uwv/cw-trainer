@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feat/**"]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  # cw-trainer builds against a sibling checkout of radio-cat-rs: Cargo.toml
+  # has a `path = "../radio-cat-rs/cat-morse"` dependency and a [patch]
+  # pointing every radio-cat-rs crate there (TEMPORARY, as in kf0uwv/ts570d).
+  # So both jobs check the two repositories out side by side and run from
+  # cw-trainer/. This is the one place that says which radio-cat-rs to
+  # build against: feat/cat-morse until radio-cat-rs PR #17 merges, then main.
+  RADIO_CAT_RS_REF: feat/cat-morse
+
+jobs:
+  test:
+    name: Linux
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cw-trainer
+
+    steps:
+      - name: Checkout cw-trainer
+        uses: actions/checkout@v4
+        with:
+          path: cw-trainer
+
+      - name: Checkout radio-cat-rs (sibling)
+        uses: actions/checkout@v4
+        with:
+          repository: kf0uwv/radio-cat-rs
+          ref: ${{ env.RADIO_CAT_RS_REF }}
+          path: radio-cat-rs
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.93"
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            cw-trainer/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('cw-trainer/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install system dependencies
+        # `--all-features` / `audio-device` builds cpal, which needs ALSA.
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Tests (lib, bin, tests/structure.rs)
+        # No sound card is opened by any test: they use doubles.
+        run: cargo test --all-targets
+
+      - name: Tests with audio-device
+        run: cargo test --all-targets --features audio-device
+
+  windows:
+    name: Windows (MSVC)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: cw-trainer
+
+    # Authoritative Windows verification (radio-cat-rs ADR 0012):
+    # x86_64-pc-windows-msvc is the host target here, so no --target flag.
+    steps:
+      - name: Checkout cw-trainer
+        uses: actions/checkout@v4
+        with:
+          path: cw-trainer
+
+      - name: Checkout radio-cat-rs (sibling)
+        uses: actions/checkout@v4
+        with:
+          repository: kf0uwv/radio-cat-rs
+          ref: ${{ env.RADIO_CAT_RS_REF }}
+          path: radio-cat-rs
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.93"
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            cw-trainer/target
+          key: ${{ runner.os }}-cargo-windows-msvc-${{ hashFiles('cw-trainer/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-windows-msvc-
+
+      - name: cargo check
+        run: cargo check --all-targets
+
+      - name: cargo test
+        run: cargo test --all-targets
+
+      - name: cargo check with audio-device (WASAPI speaker)
+        run: cargo check --all-targets --features audio-device
+
+      - name: cargo test with audio-device
+        run: cargo test --all-targets --features audio-device
