@@ -143,6 +143,22 @@ where
     out
 }
 
+/// `--server host:port`: the radio's CW defaults, read once.
+///
+/// PLACEHOLDER until task 9: the native-protocol CW read needs radio-cat-rs
+/// ADR 0023's wire types, which are not released yet. Until then this makes
+/// no network contact at all and says so; copy practice runs on local
+/// defaults (or --pitch/--wpm).
+pub fn read_server_defaults(addr: &str) -> RadioDefaults {
+    RadioDefaults {
+        warnings: vec![format!(
+            "reading the radio's CW pitch and speed from {addr} is not in this build yet; \
+             using the local defaults (or --pitch/--wpm)"
+        )],
+        ..RadioDefaults::default()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::cell::{Cell, RefCell};
@@ -277,6 +293,15 @@ mod tests {
         assert_eq!((d.pitch_hz, d.wpm), (None, None));
         assert_eq!(d.warnings.len(), 1, "{:?}", d.warnings);
         assert!(d.warnings[0].contains("radio:4532"), "{:?}", d.warnings);
+        assert!(d.warnings[0].contains("local defaults"), "{:?}", d.warnings);
+    }
+
+    #[test]
+    fn until_the_protocol_read_lands_server_is_a_warning_and_local_defaults() {
+        let d = read_server_defaults("radio:4540");
+        assert_eq!((d.pitch_hz, d.wpm), (None, None));
+        assert_eq!(d.warnings.len(), 1, "{:?}", d.warnings);
+        assert!(d.warnings[0].contains("radio:4540"), "{:?}", d.warnings);
         assert!(d.warnings[0].contains("local defaults"), "{:?}", d.warnings);
     }
 }

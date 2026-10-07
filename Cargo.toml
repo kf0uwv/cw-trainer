@@ -36,6 +36,9 @@ cat-morse = { path = "../radio-cat-rs/cat-morse", features = ["serde"] }
 serde = { version = "1.0.203", features = ["derive"] }
 serde_json = "1.0.117"
 thiserror = "1.0.61"
+# One info line naming the opened audio device, as ts570d logs it.
+tracing = "0.1.40"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 # The copy-practice input line: raw-mode key reading only, no TUI.
 crossterm = "0.27.0"

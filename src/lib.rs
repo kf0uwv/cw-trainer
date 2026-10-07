@@ -38,10 +38,13 @@
 //! - Two sessions at once: the last to save `stats.json` wins.
 //!   `history.jsonl` is append-only and keeps both.
 
+pub mod app;
 pub mod audio;
+pub mod cli;
 pub mod output;
 pub mod remote;
 pub mod session;
+pub mod sink;
 pub mod store;
 pub mod term;
 pub mod time;

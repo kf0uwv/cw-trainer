@@ -78,6 +78,9 @@ const NOWHERE: &[&str] = &[
     "SendCwText",
     "AbortCw",
     "DisarmCw",
+    // The system default audio output: on this station it is the radio's
+    // ACC2 input, so a sound played there can be transmitted.
+    "open_default",
     // ts570d-era writes.
     "send_cw",
     "transmit(",
