@@ -1,0 +1,19 @@
+# Build directories
+target/
+
+# Planning files (agent working files; see CLAUDE.md)
+planning/
+**/task_plan.md
+**/findings.md
+**/progress.md
+
+# IDE / editor
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Packages
+*.deb
+*.zip

@@ -1,0 +1,56 @@
+[package]
+name = "cw-trainer"
+version = "0.1.0"
+edition = "2021"
+authors = ["Matt Franklin <radiombf@gmail.com>"]
+license = "Apache-2.0"
+homepage = "https://github.com/kf0uwv/cw-trainer"
+repository = "https://github.com/kf0uwv/cw-trainer"
+description = "Radio-neutral Morse code (CW) trainer for any radio-cat-rs radio"
+rust-version = "1.75"
+
+[lib]
+name = "cw_trainer"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cw-trainer"
+path = "src/main.rs"
+
+[dependencies]
+# The shared, radio-independent CAT library: https://github.com/kf0uwv/radio-cat-rs.
+# This program is a cat-native *client* of a radio's server and depends on
+# nothing radio-specific -- never a radio crate (ts570d's `radio`, ft991a,
+# ic7100), never cat-framework or any cat-transport-* crate. See CLAUDE.md.
+cat-native = { git = "https://github.com/kf0uwv/radio-cat-rs", tag = "v0.8.0" }
+cat-signal = { git = "https://github.com/kf0uwv/radio-cat-rs", tag = "v0.8.0" }
+cat-signal-audio = { git = "https://github.com/kf0uwv/radio-cat-rs", tag = "v0.8.0" }
+# Radio-independent Morse code (radio-cat-rs ADR 0021): scripts, keying,
+# band synthesis and copy scoring. On radio-cat-rs's `feat/cat-morse`
+# branch and not in a tagged release yet, so a path dependency. `serde` so
+# per-character stats and session history can be persisted.
+# TEMPORARY: revert to a tagged git dependency once radio-cat-rs releases it.
+cat-morse = { path = "../radio-cat-rs/cat-morse", features = ["serde"] }
+
+[features]
+default = []
+# Play through a local sound card. Off by default: it wants the platform's
+# sound headers (ALSA on Linux). Without it the trainer cannot play a note
+# and says so rather than guessing.
+audio-device = ["cat-signal-audio/device"]
+
+# TEMPORARY local patch -- see cat-morse above. Every radio-cat-rs crate is
+# redirected to the sibling checkout (../radio-cat-rs) so exactly one copy
+# of each is linked: cat-morse is a path dependency, and without this the
+# git and path copies of shared crates (cat-signal, ...) would be distinct
+# types. Remove this whole section, and restore cat-morse to a `git`/`tag`
+# dependency, when the library is released. Mirrors kf0uwv/ts570d.
+[patch."https://github.com/kf0uwv/radio-cat-rs"]
+cat-native = { path = "../radio-cat-rs/cat-native" }
+cat-signal = { path = "../radio-cat-rs/cat-signal" }
+cat-signal-audio = { path = "../radio-cat-rs/cat-signal-audio" }
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
