@@ -29,7 +29,7 @@
 //! tone and speed. That is the only contact copy mode has with a radio,
 //! and it is confined to one module that reads the values, drops the
 //! connection, and hands back plain [`RadioDefaults`] before the session
-//! starts. Nothing else in the crate names a radio or protocol type, so no
+//! starts ([`remote`]). Nothing else in the crate names a radio or protocol type, so no
 //! write is reachable from copy mode (a test reads these sources to keep
 //! it that way).
 //!
@@ -40,6 +40,7 @@
 
 pub mod audio;
 pub mod output;
+pub mod remote;
 pub mod session;
 pub mod store;
 pub mod term;
@@ -59,18 +60,7 @@ pub fn version_line() -> String {
     format!("{PROGRAM} {}", env!("CARGO_PKG_VERSION"))
 }
 
-/// What the radio's server said about CW, if anything.
-///
-/// Lives here until `remote.rs` reads it over the native protocol (the
-/// only module that will name `cat_native`); everything below takes it as
-/// plain data, so nothing else can reach a radio.
-#[derive(Debug, Clone, Default, PartialEq)]
-pub struct RadioDefaults {
-    pub pitch_hz: Option<f32>,
-    pub wpm: Option<u32>,
-    /// Readings that could not be used, in words an operator can act on.
-    pub warnings: Vec<String>,
-}
+pub use remote::RadioDefaults;
 
 /// The tone used when neither `--pitch` nor the radio says otherwise.
 pub const DEFAULT_PITCH_HZ: f32 = 600.0;
@@ -289,7 +279,7 @@ mod tests {
         let radio = RadioDefaults {
             pitch_hz: Some(800.0),
             wpm: Some(25),
-            warnings: vec![],
+            ..RadioDefaults::default()
         };
         assert_eq!(resolve_tone_and_speed(None, None, &radio), (25, 800.0));
         assert_eq!(
