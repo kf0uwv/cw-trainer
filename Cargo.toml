@@ -34,12 +34,17 @@ cat-morse = { path = "../radio-cat-rs/cat-morse", features = ["serde"] }
 
 # audio.json, stats and session history.
 serde = { version = "1.0.203", features = ["derive"] }
+serde_json = "1.0.117"
+thiserror = "1.0.61"
 
 # The copy-practice input line: raw-mode key reading only, no TUI.
 crossterm = "0.27.0"
 # Leave raw mode on Ctrl-C *and* on termination signals (SIGTERM/SIGHUP,
 # Windows console close/shutdown), not only on panic -- see src/term.rs.
 ctrlc = { version = "3.0", features = ["termination"] }
+
+[dev-dependencies]
+tempfile = "3.10.1"
 
 [features]
 default = []

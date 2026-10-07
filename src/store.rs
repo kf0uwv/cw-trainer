@@ -346,7 +346,7 @@ mod tests {
     use cat_morse::{align, ScoreOptions};
 
     use super::*;
-    use crate::cw::session::tests::sample_record;
+    use crate::session::tests::sample_record;
 
     fn env(pairs: &[(&str, &str)]) -> impl Fn(&str) -> Option<OsString> {
         let m: HashMap<String, OsString> = pairs
