@@ -14,7 +14,7 @@
 
 //! ISO 8601 timestamps for session history, without a date crate.
 //!
-//! Copied from ts570d's `radio::calibration::iso8601_utc` (the trainer may
+//! Copied from `iso8601_utc` in ts570d's calibration module (the trainer may
 //! not depend on a radio crate), together with its test.
 
 /// ISO 8601 UTC from a Unix timestamp.
