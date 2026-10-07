@@ -18,6 +18,7 @@
 //! only so far; the trainer itself moves here from `ts570d cw`.
 
 pub mod audio;
+pub mod output;
 pub mod term;
 pub mod time;
 

@@ -242,6 +242,7 @@ dependencies = [
  "cat-signal-audio",
  "crossterm",
  "ctrlc",
+ "serde",
 ]
 
 [[package]]

@@ -23,14 +23,14 @@
 //! was the C-Media "USB PnP Sound Device" on ACC2). "Zero RF" has to cover
 //! the speaker as well as CAT, so:
 //!
-//! - `cw copy` never plays to the system default. The device is named with
+//! - `cw-trainer copy` never plays to the system default. The device is named with
 //!   `--audio-out audio:<name>` once, then remembered in `audio.json` in the
-//!   cw data directory. `audio:` alone (the default) is refused.
+//!   trainer's data directory. `audio:` alone (the default) is refused.
 //! - A deny list (`--deny-audio <text>`, remembered the same way) refuses
 //!   any device whose name contains that text, whatever was asked for.
 //!   Put the radio's interface on it once and it can never be picked by
 //!   accident again.
-//! - `ts570d cw devices` lists the outputs, marking the remembered and the
+//! - `cw-trainer devices` lists the outputs, marking the remembered and the
 //!   denied ones.
 
 use cat_signal::DeviceList;
@@ -89,7 +89,7 @@ impl AudioPrefs {
 fn denied_message(name: &str, entry: &str) -> String {
     format!(
         "refusing to play to {name:?}: it matches the deny list entry {entry:?}. \
-         Choose another output with --audio-out (see `ts570d cw devices`), or remove the \
+         Choose another output with --audio-out (see `cw-trainer devices`), or remove the \
          entry with --undeny-audio {entry:?} if it is not the radio's interface."
     )
 }
@@ -100,16 +100,16 @@ pub fn choose(flag: Option<&str>, prefs: &AudioPrefs) -> Result<String, String> 
     let spec = flag.or(prefs.device.as_deref()).ok_or_else(|| {
         format!(
             "no audio output chosen. Pick one with --audio-out audio:<name> (it is remembered); \
-             `ts570d cw devices` lists them. The system default is never used.\n{ACC2_WARNING}"
+             `cw-trainer devices` lists them. The system default is never used.\n{ACC2_WARNING}"
         )
     })?;
     let name = spec.strip_prefix(PREFIX).ok_or_else(|| {
-        format!("--audio-out wants audio:<name>, got {spec:?} (see `ts570d cw devices`)")
+        format!("--audio-out wants audio:<name>, got {spec:?} (see `cw-trainer devices`)")
     })?;
     if name.trim().is_empty() {
         return Err(format!(
-            "{spec:?} means the system default output, which cw copy never uses: name the \
-             device (see `ts570d cw devices`).\n{ACC2_WARNING}"
+            "{spec:?} means the system default output, which cw-trainer copy never uses: name the \
+             device (see `cw-trainer devices`).\n{ACC2_WARNING}"
         ));
     }
     if let Some(d) = prefs.denied_by(name) {
@@ -118,7 +118,7 @@ pub fn choose(flag: Option<&str>, prefs: &AudioPrefs) -> Result<String, String> 
     Ok(spec.to_string())
 }
 
-/// `ts570d cw devices`: every output, marking the remembered and denied.
+/// `cw-trainer devices`: every output, marking the remembered and denied.
 pub fn describe_devices(list: &DeviceList, prefs: &AudioPrefs) -> String {
     let mut out = String::from("Audio outputs (use with --audio-out):\n");
     if let Some(why) = &list.error {
@@ -238,5 +238,41 @@ mod tests {
             &p,
         );
         assert!(s.contains("cannot list outputs: no ALSA"));
+    }
+
+    #[test]
+    fn choose_refuses_the_default_device_whatever_the_route() {
+        // The cw-trainer guard for the station rule: the system default
+        // output IS the radio's ACC2 input. Nothing chosen, a bare
+        // `audio:` on the command line, or a bare `audio:` remembered
+        // (e.g. in an audio.json carried over from ts570d) must all
+        // refuse, and never return a spec that would open the default.
+        for flag in [None, Some("audio:"), Some("audio: ")] {
+            for remembered in [None, Some("audio:"), Some("audio:\t")] {
+                if flag.is_none() && remembered.is_none() {
+                    let e = choose(None, &AudioPrefs::default()).unwrap_err();
+                    assert!(e.contains("never used"), "{e}");
+                    continue;
+                }
+                let r = choose(flag, &prefs(remembered, &[]));
+                assert!(r.is_err(), "{flag:?} / {remembered:?} gave {r:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn refusals_point_at_cw_trainer_not_ts570d() {
+        let denied = prefs(Some("audio:USB PnP"), &["pnp"]);
+        let messages = [
+            choose(None, &AudioPrefs::default()).unwrap_err(),
+            choose(Some("x"), &AudioPrefs::default()).unwrap_err(),
+            choose(Some("audio:"), &AudioPrefs::default()).unwrap_err(),
+            choose(None, &denied).unwrap_err(),
+            denied.check_opened("USB PnP").unwrap_err(),
+        ];
+        for m in messages {
+            assert!(m.contains("`cw-trainer devices`"), "{m}");
+            assert!(!m.contains("ts570d"), "{m}");
+        }
     }
 }

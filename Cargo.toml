@@ -32,6 +32,9 @@ cat-signal-audio = { git = "https://github.com/kf0uwv/radio-cat-rs", tag = "v0.8
 # TEMPORARY: revert to a tagged git dependency once radio-cat-rs releases it.
 cat-morse = { path = "../radio-cat-rs/cat-morse", features = ["serde"] }
 
+# audio.json, stats and session history.
+serde = { version = "1.0.203", features = ["derive"] }
+
 # The copy-practice input line: raw-mode key reading only, no TUI.
 crossterm = "0.27.0"
 # Leave raw mode on Ctrl-C *and* on termination signals (SIGTERM/SIGHUP,
