@@ -251,15 +251,17 @@ pub fn usage() -> String {
          \x20 --no-adapt              keep the speed fixed\n\
          \x20 --server <host:port>    a radio server's console port (its\n\
          \x20                         `server --console-port`), to follow the radio's\n\
-         \x20                         pitch and speed; unreachable means local defaults\n\
+         \x20                         pitch and keyer speed (read once, never set);\n\
+         \x20                         unreachable means local defaults\n\
          \x20 --data-dir <path>       where stats, history and the audio choice live\n\
          \n\
          Keys: type copy, Enter submits, Ctrl-R/F5 AGN, Ctrl-N/F6 skip, Esc quits.\n\
          Anything typed while your own line is shown is discarded.\n\
          \n\
-         Known limitations: connecting to --server has no timeout yet, so a\n\
-         server that accepts and never answers hangs startup; two sessions at\n\
-         once means the last to save stats.json wins (history.jsonl keeps both).\n\
+         Connecting to --server, handshake included, gives up after 5 seconds.\n\
+         \n\
+         Known limitation: two sessions at once means the last to save\n\
+         stats.json wins (history.jsonl keeps both).\n\
          \n\
          `cw-trainer send` (sending practice) is not available yet.\n",
         kinds = Kind::NAMES,
