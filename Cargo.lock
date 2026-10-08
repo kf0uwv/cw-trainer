@@ -85,7 +85,7 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
 name = "cat-framework"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "cat-signal",
  "serde",
@@ -109,7 +109,7 @@ dependencies = [
 
 [[package]]
 name = "cat-native"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "cat-framework",
  "cat-layout",
@@ -120,7 +120,7 @@ dependencies = [
 
 [[package]]
 name = "cat-signal"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "async-trait",
  "serde",
@@ -128,7 +128,7 @@ dependencies = [
 
 [[package]]
 name = "cat-signal-audio"
-version = "0.8.0"
+version = "0.9.0"
 dependencies = [
  "async-trait",
  "cat-signal",
@@ -1210,7 +1210,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.48.0",
 ]
 
 [[package]]
