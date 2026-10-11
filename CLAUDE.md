@@ -15,7 +15,8 @@ port). It moved here from `ts570d cw`; `ts570d` no longer carries it.
   (manual runs, examples, tests). Tests use doubles, not sound cards.
 - Copy practice never writes to the radio: it reads defaults once over the
   native protocol, drops the connection, then runs offline. A structural
-  test (planned, T10) enforces that only `src/remote.rs` names `cat_native`.
+  test (`tests/structure.rs`) enforces that only `src/remote.rs` names
+  `cat_native` or a socket, and that no source names a radio write.
 - Sending (keying RF) is a later, separate, gated feature: dummy load only,
   behind an explicit acknowledgment. Do not add any transmit path without
   an approved plan.

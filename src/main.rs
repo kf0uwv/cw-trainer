@@ -12,23 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! `cw-trainer` binary: thin wiring only; everything testable is in the lib.
+//! `cw-trainer` binary: parse, run, exit. Everything testable is in the lib.
 
 use std::process::ExitCode;
 
+use cw_trainer::cli::{self, Mode};
+use cw_trainer::{app, version_line};
+
 fn main() -> ExitCode {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    match args.first().map(String::as_str) {
-        Some("--version") | Some("-V") => {
-            println!("{}", cw_trainer::version_line());
+    tracing_subscriber::fmt()
+        .with_env_filter("info")
+        .with_writer(std::io::stderr)
+        .init();
+    match cli::parse_args(std::env::args().skip(1)) {
+        Ok(Mode::Help) => {
+            print!("{}", cli::usage());
             ExitCode::SUCCESS
         }
-        _ => {
-            eprintln!(
-                "{}: not yet available (bootstrap build)",
-                cw_trainer::PROGRAM
-            );
+        Ok(Mode::Version) => {
+            println!("{}", version_line());
+            ExitCode::SUCCESS
+        }
+        Ok(Mode::Send) => {
+            eprintln!("`cw-trainer send` (sending practice) is not available yet.");
             ExitCode::from(2)
+        }
+        Ok(Mode::Devices(audio)) => {
+            app::run_devices(&audio);
+            ExitCode::SUCCESS
+        }
+        Ok(Mode::Copy(args)) => match app::run_copy(&args) {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(e) => {
+                eprintln!("error: {e}");
+                ExitCode::FAILURE
+            }
+        },
+        Err(e) => {
+            eprintln!("error: {e}\n\n{}", cli::usage());
+            ExitCode::FAILURE
         }
     }
 }

@@ -579,7 +579,7 @@ fn run_qsos<S: AudioSink, T: Terminal>(
     put(
         term,
         &format!(
-            "ts570d cw copy: {} contacts, {}, seed {}, {:.0} Hz, {}{NL}\
+            "cw-trainer copy: {} contacts, {}, seed {}, {:.0} Hz, {}{NL}\
              Playing to: {}{NL}\
              Type what you hear while it plays; Enter submits.{NL}\
              Ctrl-R/F5 AGN (replay)   Ctrl-N/F6 skip   Esc/Ctrl-C quit{NL}",
@@ -736,8 +736,8 @@ pub mod tests {
     use cat_morse::Callsign;
 
     use super::*;
-    use crate::cw::audio::tests::FakeSink;
-    use crate::cw::term::tests::ScriptedTerminal;
+    use crate::audio::tests::FakeSink;
+    use crate::term::tests::ScriptedTerminal;
 
     pub fn options(kind: Kind, qsos: u32, seed: u64) -> CopyOptions {
         CopyOptions {
@@ -829,6 +829,14 @@ pub mod tests {
     }
 
     // --- grouping -------------------------------------------------------
+
+    #[test]
+    fn the_banner_names_cw_trainer_not_ts570d() {
+        let opts = options(Kind::RagChew, 1, 7);
+        let (_, _, text) = run(&opts, perfect_keys(&opts, 1));
+        assert!(text.starts_with("cw-trainer copy: ragchew"), "{text}");
+        assert!(!text.contains("ts570d"), "{text}");
+    }
 
     #[test]
     fn a_ragchew_alternates_single_station_overs_with_your_lines() {
