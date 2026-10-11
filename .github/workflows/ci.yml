@@ -14,8 +14,10 @@ env:
   # pointing every radio-cat-rs crate there (TEMPORARY, as in kf0uwv/ts570d).
   # So both jobs check the two repositories out side by side and run from
   # cw-trainer/. This is the one place that says which radio-cat-rs to
-  # build against: feat/cat-morse until radio-cat-rs PR #17 merges, then main.
-  RADIO_CAT_RS_REF: feat/cat-morse
+  # build against. feat/remote-cw needs ADR 0023's CW wire types and
+  # Connection::connect_timeout: feat/cw-capability (radio-cat-rs PR #19,
+  # stacked on #17) until that merges, then main.
+  RADIO_CAT_RS_REF: feat/cw-capability
 
 jobs:
   test:

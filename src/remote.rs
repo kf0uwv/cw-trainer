@@ -30,6 +30,9 @@
 //! not being reachable at all — becomes a warning and the local default,
 //! and is never "corrected" on the radio. Copy practice always runs.
 
+use std::time::Duration;
+
+use cat_native::{Connection, CwCapabilityWire, CwState, Streams};
 use thiserror::Error;
 
 use crate::{MAX_PITCH_HZ, MAX_WPM, MIN_PITCH_HZ, MIN_WPM};
@@ -143,20 +146,60 @@ where
     out
 }
 
-/// `--server host:port`: the radio's CW defaults, read once.
+/// How long connecting **and** the protocol handshake may take, together.
+/// A server that accepts and never answers costs at most this.
+pub const CONNECT_TIMEOUT: Duration = Duration::from_secs(5);
+
+/// A radio's server, over the native protocol (ADR 0023's CW read).
 ///
-/// PLACEHOLDER until task 9: the native-protocol CW read needs radio-cat-rs
-/// ADR 0023's wire types, which are not released yet. Until then this makes
-/// no network contact at all and says so; copy practice runs on local
-/// defaults (or --pitch/--wpm).
-pub fn read_server_defaults(addr: &str) -> RadioDefaults {
-    RadioDefaults {
-        warnings: vec![format!(
-            "reading the radio's CW pitch and speed from {addr} is not in this build yet; \
-             using the local defaults (or --pitch/--wpm)"
-        )],
-        ..RadioDefaults::default()
+/// Holds a connection that asked for no streams; the only things ever
+/// asked of it are the handshake's capabilities and one state read.
+pub struct ServerSource(Connection);
+
+impl ServerSource {
+    /// Connect and handshake, both bounded by `timeout`.
+    pub fn connect(addr: &str, timeout: Duration) -> Result<Self, RemoteError> {
+        Connection::connect_timeout(addr, Streams::none(), timeout)
+            .map(Self)
+            .map_err(|e| RemoteError::Connect {
+                addr: addr.to_string(),
+                reason: e.to_string(),
+            })
     }
+}
+
+impl CwDefaultsSource for ServerSource {
+    fn read_cw(&mut self) -> Result<Option<CwReading>, RemoteError> {
+        // Never probe: a server whose Welcome carried no `cw` is not asked.
+        let Some(cap) = self.0.cw_capability().cloned() else {
+            return Ok(None);
+        };
+        let state = self
+            .0
+            .cw_state()
+            .map_err(|e| RemoteError::Read(e.to_string()))?;
+        Ok(Some(reading_from(&cap, state.as_ref())))
+    }
+}
+
+/// What the server advertised and reported, in the trainer's terms.
+pub fn reading_from(cap: &CwCapabilityWire, state: Option<&CwState>) -> CwReading {
+    CwReading {
+        pitch_hz: state.and_then(|s| s.pitch_hz),
+        keyer_wpm: state.and_then(|s| s.keyer_wpm),
+        pitch_range_hz: cap.pitch.as_ref().map(|r| (r.min_hz, r.max_hz)),
+        keyer_wpm_range: cap.keyer_wpm.as_ref().map(|r| (r.min, r.max)),
+    }
+}
+
+/// `--server host:port`: the radio's CW defaults, read once.
+pub fn read_server_defaults(addr: &str) -> RadioDefaults {
+    read_server_defaults_within(addr, CONNECT_TIMEOUT)
+}
+
+/// [`read_server_defaults`] with the connect/handshake bound given.
+pub fn read_server_defaults_within(addr: &str, timeout: Duration) -> RadioDefaults {
+    read_defaults(|| ServerSource::connect(addr, timeout))
 }
 
 #[cfg(test)]
@@ -296,12 +339,197 @@ mod tests {
         assert!(d.warnings[0].contains("local defaults"), "{:?}", d.warnings);
     }
 
+    // ------------------------------------------------------------------
+    // Over the native protocol
+    // ------------------------------------------------------------------
+
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::time::Instant;
+
+    use cat_native::{
+        decode_frame, encode_frame, CapabilitiesWire, FrameKind, HzRange, ModeId, RadioState,
+        WpmRange,
+    };
+
+    fn cw_cap() -> CwCapabilityWire {
+        CwCapabilityWire {
+            pitch: Some(HzRange {
+                min_hz: 400,
+                max_hz: 1000,
+                step_hz: Some(50),
+            }),
+            pitch_writable: true,
+            keyer_wpm: Some(WpmRange::new(10, 60)),
+            keyer_wpm_writable: true,
+            break_in: vec![],
+            send_text: None,
+            tx_gate: None,
+        }
+    }
+
+    fn cw_state(pitch: Option<u32>, wpm: Option<u16>) -> CwState {
+        CwState {
+            pitch_hz: pitch,
+            keyer_wpm: wpm,
+            break_in: None,
+            armed: None,
+            sender: Default::default(),
+            restore: None,
+            id_owed: None,
+        }
+    }
+
     #[test]
-    fn until_the_protocol_read_lands_server_is_a_warning_and_local_defaults() {
-        let d = read_server_defaults("radio:4540");
+    fn the_wire_maps_straight_into_a_reading() {
+        let r = reading_from(&cw_cap(), Some(&cw_state(Some(750), Some(22))));
+        assert_eq!(
+            r,
+            CwReading {
+                pitch_hz: Some(750),
+                keyer_wpm: Some(22),
+                pitch_range_hz: Some((400, 1000)),
+                keyer_wpm_range: Some((10, 60)),
+            }
+        );
+        // CW advertised but not polled yet: ranges only.
+        let r = reading_from(&cw_cap(), None);
+        assert_eq!((r.pitch_hz, r.keyer_wpm), (None, None));
+        assert_eq!(r.pitch_range_hz, Some((400, 1000)));
+    }
+
+    /// A one-connection server speaking the native protocol from a script:
+    /// a Welcome advertising `cw`, then a State for any command. Returns
+    /// its address and a handle yielding every control message it got, as
+    /// JSON, and whether the client closed the connection afterwards.
+    fn scripted_server(
+        cw: Option<CwCapabilityWire>,
+        state_cw: Option<CwState>,
+    ) -> (
+        String,
+        std::thread::JoinHandle<(Vec<serde_json::Value>, bool)>,
+    ) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap().to_string();
+        let handle = std::thread::spawn(move || {
+            let (mut sock, _) = listener.accept().unwrap();
+            sock.set_read_timeout(Some(Duration::from_secs(10)))
+                .unwrap();
+            let mut caps: CapabilitiesWire = cat_native::testing::stub_capabilities();
+            caps.cw = cw;
+            let state = RadioState {
+                vfo_a_hz: 7_030_000,
+                vfo_b_hz: 7_030_000,
+                mode: ModeId::CwUpper,
+                split: false,
+                transmitting: false,
+                memory_channel: None,
+                if_shift_hz: None,
+                filter_width_hz: None,
+                meters: vec![],
+                levels: None,
+                cw: state_cw,
+            };
+            let mut got = Vec::new();
+            let mut buf = Vec::new();
+            let mut chunk = [0u8; 4096];
+            loop {
+                let n = match sock.read(&mut chunk) {
+                    Ok(0) => return (got, true),
+                    Ok(n) => n,
+                    Err(_) => return (got, false),
+                };
+                buf.extend_from_slice(&chunk[..n]);
+                while let Ok((FrameKind::Control, payload, used)) = decode_frame(&buf) {
+                    let msg: serde_json::Value = serde_json::from_slice(payload).unwrap();
+                    buf.drain(..used);
+                    let reply = if msg["type"] == "hello" {
+                        serde_json::json!({
+                            "type": "welcome",
+                            "version": cat_native::PROTOCOL_VERSION,
+                            "capabilities": caps,
+                        })
+                    } else {
+                        let mut v = serde_json::to_value(&state).unwrap();
+                        v["type"] = "state".into();
+                        v
+                    };
+                    got.push(msg);
+                    let bytes = serde_json::to_vec(&reply).unwrap();
+                    sock.write_all(&encode_frame(FrameKind::Control, &bytes))
+                        .unwrap();
+                }
+            }
+        });
+        (addr, handle)
+    }
+
+    fn kinds(got: &[serde_json::Value]) -> Vec<String> {
+        got.iter()
+            .map(|m| match m["cmd"].as_str() {
+                Some(c) => format!("{}:{c}", m["type"].as_str().unwrap_or("?")),
+                None => m["type"].as_str().unwrap_or("?").to_string(),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_cw_server_is_read_once_and_let_go() {
+        let (addr, server) = scripted_server(Some(cw_cap()), Some(cw_state(Some(750), Some(22))));
+        let d = read_server_defaults(&addr);
+        assert_eq!((d.pitch_hz, d.wpm), (Some(750.0), Some(22)));
+        assert!(d.warnings.is_empty(), "{:?}", d.warnings);
+        let (got, closed) = server.join().unwrap();
+        // The handshake and one state read: nothing that could write.
+        assert_eq!(kinds(&got), ["hello", "command:read_state"]);
+        assert!(closed, "the connection is closed before the session");
+    }
+
+    #[test]
+    fn a_cw_server_out_of_its_own_range_is_a_warning() {
+        let (addr, server) = scripted_server(Some(cw_cap()), Some(cw_state(Some(1100), Some(22))));
+        let d = read_server_defaults(&addr);
+        assert_eq!((d.pitch_hz, d.wpm), (None, Some(22)));
+        assert_eq!(d.warnings.len(), 1, "{:?}", d.warnings);
+        server.join().unwrap();
+    }
+
+    #[test]
+    fn cat_natives_stub_server_without_cw_is_a_note_and_never_written_to() {
+        let host = cat_native::testing::StubHost::new();
+        let addr = cat_native::testing::serve_stub(host.clone());
+        let d = read_server_defaults(&addr);
+        assert_eq!((d.pitch_hz, d.wpm), (None, None));
+        assert!(d.warnings.is_empty(), "{:?}", d.warnings);
+        assert_eq!(d.notes.len(), 1, "{:?}", d.notes);
+        assert!(host.applied().is_empty(), "{:?}", host.applied());
+    }
+
+    #[test]
+    fn an_unreachable_server_is_a_warning_naming_it() {
+        let addr = {
+            let l = TcpListener::bind("127.0.0.1:0").unwrap();
+            l.local_addr().unwrap().to_string()
+        }; // closed again: connecting is refused
+        let d = read_server_defaults(&addr);
         assert_eq!((d.pitch_hz, d.wpm), (None, None));
         assert_eq!(d.warnings.len(), 1, "{:?}", d.warnings);
-        assert!(d.warnings[0].contains("radio:4540"), "{:?}", d.warnings);
-        assert!(d.warnings[0].contains("local defaults"), "{:?}", d.warnings);
+        assert!(d.warnings[0].contains(&addr), "{:?}", d.warnings);
+    }
+
+    #[test]
+    fn a_server_that_never_answers_costs_the_timeout_not_forever() {
+        let l = TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = l.local_addr().unwrap().to_string();
+        let start = Instant::now();
+        let d = read_server_defaults_within(&addr, Duration::from_millis(300));
+        assert!(
+            start.elapsed() < Duration::from_secs(3),
+            "{:?}",
+            start.elapsed()
+        );
+        assert_eq!(d.warnings.len(), 1, "{:?}", d.warnings);
+        assert!(d.warnings[0].contains(&addr), "{:?}", d.warnings);
+        drop(l);
     }
 }
