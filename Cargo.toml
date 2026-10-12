@@ -26,8 +26,8 @@ cat-native = { git = "https://github.com/kf0uwv/radio-cat-rs", tag = "v0.8.0" }
 cat-signal = { git = "https://github.com/kf0uwv/radio-cat-rs", tag = "v0.8.0" }
 cat-signal-audio = { git = "https://github.com/kf0uwv/radio-cat-rs", tag = "v0.8.0" }
 # Radio-independent Morse code (radio-cat-rs ADR 0021): scripts, keying,
-# band synthesis and copy scoring. On radio-cat-rs's `feat/cat-morse`
-# branch and not in a tagged release yet, so a path dependency. `serde` so
+# band synthesis and copy scoring. On radio-cat-rs main but not in a
+# tagged release yet, so a path dependency. `serde` so
 # per-character stats and session history can be persisted.
 # TEMPORARY: revert to a tagged git dependency once radio-cat-rs releases it.
 cat-morse = { path = "../radio-cat-rs/cat-morse", features = ["serde"] }
