@@ -363,6 +363,30 @@ fn radio_cat_rs_is_pinned_once_by_rev_with_no_patch() {
 }
 
 #[test]
+fn the_library_readme_names_the_pinned_cat_morse_exactly() {
+    // A consumer that also depends on cat-morse must use the identical
+    // source (a rev and a tag are different sources to Cargo), so the
+    // README's spec must be the workspace's pin, character for character.
+    let manifest = fs::read_to_string(root().join("Cargo.toml")).unwrap();
+    let pin = manifest
+        .lines()
+        .find(|l| l.starts_with("cat-morse = { git"))
+        .expect("cat-morse pinned in [workspace.dependencies]");
+    let rev = pin
+        .split("rev = \"")
+        .nth(1)
+        .unwrap()
+        .split('"')
+        .next()
+        .unwrap();
+    let readme = fs::read_to_string(core_root().join("README.md")).unwrap();
+    let spec = format!(
+        "cat-morse = {{ git = \"{RADIO_CAT_RS}\", rev = \"{rev}\", features = [\"serde\"] }}"
+    );
+    assert!(readme.contains(&spec), "README lacks: {spec}");
+}
+
+#[test]
 fn the_scanner_finds_what_it_is_looking_for() {
     // Guards the guards: a scanner that never matches would pass forever.
     let files = vec![

@@ -15,6 +15,32 @@ network, file, thread or clock code, and its only dependencies are
 cat-morse, serde and thiserror, so it builds for iOS, Android, macOS,
 Windows and Linux with no SDK.
 
+## Depending on it
+
+The library is not on crates.io; depend on it from git, pinned to a
+commit of this repository:
+
+```toml
+[dependencies]
+cw-trainer-core = { git = "https://github.com/kf0uwv/cw-trainer", rev = "<commit>" }
+```
+
+Use cat-morse **through the re-export**, `cw_trainer_core::cat_morse`, so
+that its types (`CharStats`, `Score`, `Callsign`, `ChannelRenderer`, ...)
+are the very ones the library uses. If you must also depend on cat-morse
+directly, use exactly the spec this repository pins:
+
+```toml
+cat-morse = { git = "https://github.com/kf0uwv/radio-cat-rs", rev = "b821bf47ceb57b8f23e437ca3136cd745235e180", features = ["serde"] }
+```
+
+Cargo treats a `rev`, a `tag` and a `branch` of the same repository as
+different sources: any other spelling links a second cat-morse whose types
+do not match the library's. radio-cat-rs has not yet tagged a release
+with cat-morse, so it is pinned by rev for now; once it is tagged, this
+repository moves to the tag, and a consumer's direct spec must move with
+it.
+
 ## Driving a session
 
 A `CopySession` decides; the caller does everything that touches the
