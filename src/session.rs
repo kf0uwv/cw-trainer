@@ -696,6 +696,82 @@ pub mod tests {
         assert_eq!(sa.played, sb.played);
     }
 
+    /// A band whose static crashes are far too loud: every over clips.
+    fn clipping_band() -> cat_morse::scenario::BandConditions {
+        use cat_morse::scenario::{BandConditions, QrnOdds};
+        BandConditions {
+            qrn: Some(QrnOdds {
+                chance: 1.0,
+                crashes_per_sec: (4.0, 4.0),
+                level_db: (20.0, 20.0),
+                decay_ms: (50, 70),
+            }),
+            ..BandConditions::clean()
+        }
+    }
+
+    /// Each play the speaker got, split at its clears.
+    fn plays(sink: &FakeSink) -> Vec<Vec<f32>> {
+        let mut out = Vec::new();
+        let mut from = 0;
+        let mut marks = sink.clear_marks.clone();
+        marks.push(sink.played.len());
+        for to in marks {
+            if to > from {
+                out.push(sink.played[from..to].to_vec());
+            }
+            from = to;
+        }
+        out
+    }
+
+    fn render(audio: &cw_trainer_core::OverAudio) -> (Vec<f32>, u64) {
+        let mut r = audio.renderer().unwrap();
+        let mut out = vec![0.0; audio.channel().len_samples() + 1];
+        let n = r.fill(&mut out);
+        out.truncate(n);
+        (out, r.clipped())
+    }
+
+    #[test]
+    fn a_clipped_over_turns_the_next_one_down_through_the_cli() {
+        use cw_trainer_core::{OverOutcome, Step};
+
+        let mut opts = options(Kind::RagChew, 1, 7);
+        opts.band = Some(clipping_band());
+        let (_, sink, _) = run(&opts, perfect_keys(&opts, 0));
+        let played = plays(&sink);
+
+        // The library, told what the renderer reported, and told nothing.
+        let second = |report_clipping: bool| {
+            let mut s = CopySession::new(opts.clone(), 8000).unwrap();
+            let mut n = 0;
+            while let Some(step) = s.next_step().unwrap() {
+                if let Step::ThemOver(o) = step {
+                    let (pcm, clipped) = render(&o.audio);
+                    if n == 1 {
+                        return (pcm, o.audio.channel().gain);
+                    }
+                    assert!(clipped > 0, "the first over must clip");
+                    s.submit(OverOutcome::Copied {
+                        text: o.expected.join(" "),
+                        agn: 0,
+                        audio_gaps: 0,
+                        clipped: if report_clipping { clipped } else { 0 },
+                    })
+                    .unwrap();
+                    n += 1;
+                }
+            }
+            unreachable!("a second them over");
+        };
+        let (turned_down, gain) = second(true);
+        let (full, _) = second(false);
+        assert_eq!(gain, 0.8);
+        assert_ne!(turned_down, full);
+        assert_eq!(played[1], turned_down, "the CLI reports the clipping");
+    }
+
     #[test]
     fn adaptation_is_announced_and_carried_into_the_record() {
         let mut opts = options(Kind::RagChew, 1, 7);
