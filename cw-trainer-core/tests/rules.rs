@@ -22,7 +22,7 @@ use cw_trainer_core::cat_morse::scenario::BandConditions;
 use cw_trainer_core::cat_morse::Callsign;
 use cw_trainer_core::copy::{CopySession, OverOutcome, Step};
 use cw_trainer_core::options::{CopyOptions, Farnsworth, Kind, Level, MAX_WPM, MIN_WPM};
-use cw_trainer_core::record::SessionRecord;
+use cw_trainer_core::record::{RecordedBand, SessionRecord};
 use cw_trainer_core::speed::{AdaptRule, LOWER_CER, RAISE_CER, STEP_WPM, WINDOW};
 use cw_trainer_core::CoreError;
 
@@ -207,7 +207,10 @@ fn a_band_override_replaces_the_levels_band_and_is_recorded() {
     opts.band = Some(BandConditions::clean());
     let (clean, noise) = run(opts);
     assert!(noise.iter().all(|n| n.is_none()), "{noise:?}");
-    assert_eq!(clean.band, Some(BandConditions::clean()));
+    assert_eq!(
+        clean.band,
+        Some(RecordedBand::from(BandConditions::clean()))
+    );
     let mut without = clean.clone();
     without.band = None;
     let plain = serde_json::to_string(&without).unwrap();
@@ -259,4 +262,38 @@ fn unknown_fields_from_a_later_version_are_tolerated() {
     let later = format!("{},\"from_the_future\":[1,2]}}", &line[..line.len() - 1]);
     let r: SessionRecord = serde_json::from_str(&later).unwrap();
     assert_eq!(r, serde_json::from_str::<SessionRecord>(line).unwrap());
+}
+
+#[test]
+fn a_recorded_band_writes_cat_morses_own_shape_byte_for_byte() {
+    // Every impairment present, so every field is written.
+    for level in [Level::Beginner, Level::Intermediate, Level::Advanced] {
+        let band = level.difficulty().band;
+        assert_eq!(
+            serde_json::to_string(&RecordedBand::from(band)).unwrap(),
+            serde_json::to_string(&band).unwrap(),
+            "{level:?}"
+        );
+        assert_eq!(BandConditions::from(RecordedBand::from(band)), band);
+    }
+}
+
+#[test]
+fn a_recorded_band_missing_fields_still_reads() {
+    // A line written by a version whose band had fewer fields (or that a
+    // later band type would not read) keeps the whole record readable.
+    let text = fs::read_to_string(records().join("ragchew.history.jsonl")).unwrap();
+    let line = text.lines().next().unwrap();
+    let with_band = format!(
+        "{},\"band\":{{\"snr_db\":[9.0,11.0],\"qsb\":{{\"chance\":0.4}}}}}}",
+        &line[..line.len() - 1]
+    );
+    let r: SessionRecord = serde_json::from_str(&with_band).unwrap();
+    let band = r.band.unwrap();
+    assert_eq!(band.snr_db, Some((9.0, 11.0)));
+    assert_eq!(band.qsb.unwrap().chance, 0.4);
+    assert_eq!(
+        (band.qrn, band.qrm, band.rx_bandwidth_hz),
+        (None, None, None)
+    );
 }

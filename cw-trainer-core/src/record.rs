@@ -19,7 +19,7 @@
 //! history file, version 1) and is frozen: fields are only ever appended,
 //! with `#[serde(default)]`, so every old line still reads.
 
-use cat_morse::scenario::BandConditions;
+use cat_morse::scenario::{BandConditions, QrmOdds, QrnOdds, QsbOdds};
 use cat_morse::Score;
 use serde::{Deserialize, Serialize};
 
@@ -71,5 +71,97 @@ pub struct SessionRecord {
     pub adapt_rule: Option<AdaptRule>,
     /// The band conditions, when they were not the level's own.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub band: Option<BandConditions>,
+    pub band: Option<RecordedBand>,
+}
+
+/// Band conditions as a record keeps them: cat-morse's
+/// [`BandConditions`], field for field and written the same, but owned by
+/// this format. Every field reads with a default, so a line stays readable
+/// whatever cat-morse's own type later gains or drops.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RecordedBand {
+    pub snr_db: Option<(f32, f32)>,
+    pub qsb: Option<RecordedQsb>,
+    pub qrn: Option<RecordedQrn>,
+    pub qrm: Option<RecordedQrm>,
+    pub rx_bandwidth_hz: Option<f32>,
+}
+
+/// cat-morse's `QsbOdds`, as a record keeps it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RecordedQsb {
+    pub chance: f64,
+    pub depth_db: (f32, f32),
+    pub period_s: (f32, f32),
+}
+
+/// cat-morse's `QrnOdds`, as a record keeps it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RecordedQrn {
+    pub chance: f64,
+    pub crashes_per_sec: (f32, f32),
+    pub level_db: (f32, f32),
+    pub decay_ms: (u32, u32),
+}
+
+/// cat-morse's `QrmOdds`, as a record keeps it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct RecordedQrm {
+    pub chance: f64,
+    pub offset_hz: (f32, f32),
+    pub level_db: (f32, f32),
+}
+
+impl From<BandConditions> for RecordedBand {
+    fn from(b: BandConditions) -> Self {
+        RecordedBand {
+            snr_db: b.snr_db,
+            qsb: b.qsb.map(|q| RecordedQsb {
+                chance: q.chance,
+                depth_db: q.depth_db,
+                period_s: q.period_s,
+            }),
+            qrn: b.qrn.map(|q| RecordedQrn {
+                chance: q.chance,
+                crashes_per_sec: q.crashes_per_sec,
+                level_db: q.level_db,
+                decay_ms: q.decay_ms,
+            }),
+            qrm: b.qrm.map(|q| RecordedQrm {
+                chance: q.chance,
+                offset_hz: q.offset_hz,
+                level_db: q.level_db,
+            }),
+            rx_bandwidth_hz: b.rx_bandwidth_hz,
+        }
+    }
+}
+
+impl From<RecordedBand> for BandConditions {
+    fn from(b: RecordedBand) -> Self {
+        BandConditions {
+            snr_db: b.snr_db,
+            qsb: b.qsb.map(|q| QsbOdds {
+                chance: q.chance,
+                depth_db: q.depth_db,
+                period_s: q.period_s,
+            }),
+            qrn: b.qrn.map(|q| QrnOdds {
+                chance: q.chance,
+                crashes_per_sec: q.crashes_per_sec,
+                level_db: q.level_db,
+                decay_ms: q.decay_ms,
+            }),
+            qrm: b.qrm.map(|q| QrmOdds {
+                chance: q.chance,
+                offset_hz: q.offset_hz,
+                level_db: q.level_db,
+            }),
+            rx_bandwidth_hz: b.rx_bandwidth_hz,
+        }
+    }
 }

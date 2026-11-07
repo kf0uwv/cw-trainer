@@ -48,7 +48,7 @@ use crate::error::CoreError;
 use crate::options::{CopyOptions, Farnsworth, MAX_PITCH_HZ, MAX_WPM, MIN_PITCH_HZ, MIN_WPM};
 use crate::over::over_channel;
 use crate::plan::{expected_for, over_indices, plan_qso, OverAt, QsoPlan};
-use crate::record::{OverResult, SessionRecord};
+use crate::record::{OverResult, RecordedBand, SessionRecord};
 use crate::speed::{AdaptRule, SpeedSetting, SpeedState};
 
 /// The lowest sample rate a session renders at: enough for the highest
@@ -541,7 +541,10 @@ impl CopySession {
                 quit_early,
                 ended_by_error,
                 adapt_rule: opts.adapt.filter(|r| *r != AdaptRule::default()),
-                band: opts.band.filter(|b| *b != opts.level.difficulty().band),
+                band: opts
+                    .band
+                    .filter(|b| *b != opts.level.difficulty().band)
+                    .map(RecordedBand::from),
             },
             session_stats: self.session_stats,
         }
