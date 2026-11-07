@@ -257,6 +257,7 @@ dependencies = [
  "cat-signal-audio",
  "crossterm",
  "ctrlc",
+ "cw-trainer-core",
  "serde",
  "serde_json",
  "tempfile",

@@ -46,6 +46,9 @@ name = "cw-trainer"
 path = "src/main.rs"
 
 [dependencies]
+# The session library: options, contacts, scoring, adaptive speed and
+# records, with no I/O. This package is its terminal, speaker and files.
+cw-trainer-core = { path = "cw-trainer-core", version = "0.1.0" }
 # The shared, radio-independent CAT library: https://github.com/kf0uwv/radio-cat-rs.
 # This program is a cat-native *client* of a radio's server and depends on
 # nothing radio-specific -- never a radio crate (ts570d's `radio`, ft991a,

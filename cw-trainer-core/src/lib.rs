@@ -36,3 +36,5 @@
 #![forbid(unsafe_code)]
 
 pub use cat_morse;
+
+pub mod options;
