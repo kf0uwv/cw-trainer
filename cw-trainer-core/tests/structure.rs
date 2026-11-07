@@ -25,7 +25,8 @@
 //!    no build, target-specific or optional dependencies and no build
 //!    script.
 //! 2. No source names anything on [`FORBIDDEN`].
-//! 3. `src/lib.rs` forbids `unsafe` code.
+//! 3. `src/lib.rs` forbids `unsafe` code, and the manifest has no
+//!    `[features]`.
 //!
 //! Comments count: a forbidden word in a comment fails too. Rephrase the
 //! comment; never weaken a list (the repository's root structure test
@@ -98,6 +99,37 @@ const FORBIDDEN: &[&str] = &[
     ".cosh(",
     ".tanh(",
     ".mul_add(",
+    // The same, called as associated functions.
+    "f64::sqrt",
+    "f64::powf",
+    "f64::powi",
+    "f64::exp",
+    "f64::ln",
+    "f64::log",
+    "f64::sin",
+    "f64::cos",
+    "f64::tan",
+    "f32::sqrt",
+    "f32::powf",
+    "f32::powi",
+    "f32::exp",
+    "f32::ln",
+    "f32::log",
+    "f32::sin",
+    "f32::cos",
+    "f32::tan",
+    // A grouped import hides which module it reaches into
+    // (`std::{fs, net}`): name each module on its own line instead.
+    "std::{",
+    // Hash maps iterate in a per-process random order, so anything
+    // derived from iterating one differs from run to run.
+    "HashMap",
+    "HashSet",
+    "RandomState",
+    // The build environment: the library's output must not depend on
+    // where or by whom it was compiled.
+    "env!(",
+    "option_env!(",
     // The CLI's lists, kept whole here: only its remote module may reach
     // a server, and nothing anywhere may change a radio.
     "cat_native",
@@ -182,7 +214,10 @@ fn violations<'a>(files: &[(String, String)], words: &[&'a str]) -> Vec<(String,
 
 /// The manifest as `(section, key)` pairs, comments dropped.
 fn manifest_keys() -> Vec<(String, String)> {
-    let text = fs::read_to_string(root().join("Cargo.toml")).unwrap();
+    manifest_keys_of(&fs::read_to_string(root().join("Cargo.toml")).unwrap())
+}
+
+fn manifest_keys_of(text: &str) -> Vec<(String, String)> {
     let mut section = String::new();
     let mut keys = Vec::new();
     for line in text.lines() {
@@ -242,6 +277,20 @@ fn depends_on_exactly_cat_morse_serde_and_thiserror() {
     );
 }
 
+/// The manifest's problems beyond its dependency list: features, which
+/// could switch on code no test builds.
+fn manifest_problems(keys: &[(String, String)]) -> Vec<String> {
+    keys.iter()
+        .filter(|(s, _)| s == "features" || s.starts_with("features."))
+        .map(|(s, k)| format!("[{s}] {k}"))
+        .collect()
+}
+
+#[test]
+fn has_no_features() {
+    assert_eq!(manifest_problems(&manifest_keys()), Vec::<String>::new());
+}
+
 #[test]
 fn has_no_build_script() {
     assert!(!root().join("build.rs").exists(), "no build.rs");
@@ -285,5 +334,52 @@ fn the_scanner_finds_what_it_is_looking_for() {
             ("src/a.rs".to_string(), "Instant"),
             ("src/b.rs".to_string(), ".powf("),
         ]
+    );
+}
+
+#[test]
+fn the_scanner_catches_every_way_round_the_list() {
+    // Negative controls: each of these must be found.
+    let cases: &[(&str, &str)] = &[
+        ("use std::{fs, io};", "std::{"),
+        ("let r = f64::sqrt(x);", "f64::sqrt"),
+        ("let r = f64::powf(x, 2.0);", "f64::powf"),
+        ("let r = f64::powi(x, 2);", "f64::powi"),
+        ("let r = f64::exp(x);", "f64::exp"),
+        ("let r = f64::ln(x);", "f64::ln"),
+        ("let r = f64::log10(x);", "f64::log"),
+        ("let r = f64::sin(x);", "f64::sin"),
+        ("let r = f64::cos(x);", "f64::cos"),
+        ("let r = f64::tan(x);", "f64::tan"),
+        ("let r = f32::sqrt(x);", "f32::sqrt"),
+        ("let r = f32::powf(x, 2.0);", "f32::powf"),
+        ("let r = f32::powi(x, 2);", "f32::powi"),
+        ("let r = f32::exp(x);", "f32::exp"),
+        ("let r = f32::ln(x);", "f32::ln"),
+        ("let r = f32::log2(x);", "f32::log"),
+        ("let r = f32::sin(x);", "f32::sin"),
+        ("let r = f32::cos(x);", "f32::cos"),
+        ("let r = f32::tan(x);", "f32::tan"),
+        ("let m: HashMap<u8, u8> = Default::default();", "HashMap"),
+        ("let m: HashSet<u8> = Default::default();", "HashSet"),
+        ("let h = RandomState::new();", "RandomState"),
+        ("const V: &str = env!(\"CARGO_PKG_VERSION\");", "env!("),
+        (
+            "const V: Option<&str> = option_env!(\"HOME\");",
+            "option_env!(",
+        ),
+    ];
+    for (src, word) in cases {
+        let files = vec![("src/x.rs".to_string(), src.to_string())];
+        let found = violations(&files, FORBIDDEN);
+        assert!(
+            found.iter().any(|(_, w)| w == word),
+            "{src:?} should be caught as {word:?}, found {found:?}"
+        );
+    }
+    let keys = manifest_keys_of("[package]\nname = \"x\"\n\n[features]\nextra = []\n");
+    assert_eq!(
+        manifest_problems(&keys),
+        vec!["[features] ".to_string(), "[features] extra".to_string()]
     );
 }
