@@ -12,23 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! The copy session: QSO after QSO, over after over.
+//! The copy session at the terminal: QSO after QSO, over after over.
 //!
-//! For each QSO a script is generated (cat-morse) at the current speed.
-//! Its transmissions are grouped into *overs*: a *you* line is shown as a
-//! prompt and held for as long as it would take to send; a *them* over —
-//! one station, or several calling at once in a pileup — is synthesized
-//! and played while the operator types. Enter submits; the copy is scored
-//! per character and shown aligned against what was sent.
-//!
-//! # Adaptive speed
-//!
-//! Over a window of the last [`WINDOW`] scored overs (skips excluded):
-//! a CER of at most [`RAISE_CER`] with no AGN raises the speed by
-//! [`STEP_WPM`]; a CER of at least [`LOWER_CER`] lowers it. With
-//! Farnsworth spacing on, the *effective* speed moves first, until it
-//! meets the character speed and Farnsworth falls away. A change takes
-//! effect at the next QSO: a station does not change speed mid-contact.
+//! The session itself — contacts, overs, scoring, adaptive speed, the
+//! record — is the library's [`CopySession`] (`cw-trainer-core`). This
+//! module is its terminal and speaker: a *you* line is shown as a prompt
+//! and held for as long as it would take to send; a *them* over — one
+//! station, or several calling at once in a pileup — is played while the
+//! operator types. Enter submits; the copy is scored per character and
+//! shown aligned against what was sent. The speed rule is documented in
+//! `cw_trainer_core::speed`.
 
 use std::io;
 use std::time::Duration;

@@ -10,6 +10,13 @@ radio's server, then runs copy practice through a sound card you name.
 Audio is only ever played to an explicitly chosen device, never the system
 default (which, on many stations, feeds the radio's audio input).
 
+## Layout
+
+- `cw-trainer` (this directory): the command-line trainer — terminal,
+  speaker, files, and the one read of the radio's defaults.
+- [`cw-trainer-core`](cw-trainer-core/): the copy session as a library
+  with no I/O, which builds for desktop and mobile targets alike.
+
 ## Building
 
 radio-cat-rs is fetched by Cargo, pinned to one revision in `Cargo.toml`.

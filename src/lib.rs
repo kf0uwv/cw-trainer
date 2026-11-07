@@ -19,8 +19,11 @@
 //! activators, DX pileups — through band noise, fading, static and QRM,
 //! the operator types what they copy, and the copy is scored per
 //! character. Everything about Morse comes from `cat-morse`
-//! (radio-cat-rs ADR 0021); this crate is the session, the keyboard, the
-//! speaker and the files. It works with any radio-cat-rs radio.
+//! (radio-cat-rs ADR 0021), and the session itself — options, contacts,
+//! scoring, adaptive speed, records — from the `cw-trainer-core` library
+//! in this repository, which has no I/O of its own; this crate is the
+//! keyboard, the speaker and the files. It works with any radio-cat-rs
+//! radio.
 //!
 //! # The radio is read once and then let go
 //!

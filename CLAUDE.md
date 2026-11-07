@@ -16,14 +16,15 @@ port). It moved here from `ts570d cw`; `ts570d` no longer carries it.
 - Copy practice never writes to the radio: it reads defaults once over the
   native protocol, drops the connection, then runs offline. A structural
   test (`tests/structure.rs`) enforces that only `src/remote.rs` names
-  `cat_native` or a socket, and that no source names a radio write.
+  `cat_native` or a socket, and that no source (the library's included)
+  names a radio write.
 - Sending (keying RF) is a later, separate, gated feature: dummy load only,
   behind an explicit acknowledgment. Do not add any transmit path without
   an approved plan.
 
 ## Dependency rules (violation is a blocking issue)
 - Depend only on radio-cat-rs's `cat-native`, `cat-morse`, `cat-signal`,
-  `cat-signal-audio`. Never on a radio crate (ts570d's `radio`, ft991a,
+  `cat-signal-audio` (the library: `cat-morse` only). Never on a radio crate (ts570d's `radio`, ft991a,
   ic7100) and never directly on `cat-framework` or any `cat-transport-*`.
 - Engine/protocol changes belong in radio-cat-rs (its ADR 0001 / rule 7),
   never a local fork or vendored copy.
@@ -31,6 +32,35 @@ port). It moved here from `ts570d cw`; `ts570d` no longer carries it.
   `[workspace.dependencies]`, to one radio-cat-rs revision: **pinned by rev
   until radio-cat-rs is tagged, then by tag.** No `[patch]`, no path to a
   sibling checkout (`tests/structure.rs` enforces both).
+
+## The session library, `cw-trainer-core/` (violation is a blocking issue)
+- The copy session's logic lives here, for the CLI and for an app
+  consumer alike: options, QSO planning, over audio, scoring, adaptive
+  speed, records, and `CopySession`, which a caller drives step by step.
+  The CLI (`src/session.rs`) only shows, plays, collects and stores.
+- **Pure.** `[dependencies]` is exactly cat-morse, serde and thiserror; no
+  build script; `#![forbid(unsafe_code)]`. No terminal, process, file,
+  network, thread, clock, entropy or device code: the caller supplies the
+  seed, the start time and the sample rate, and stores what comes back.
+  `cw-trainer-core/tests/structure.rs` and CI's dependency-graph step
+  enforce it; its word list only ever grows, and keeps every word of the
+  CLI's lists.
+- **Deterministic.** Code that feeds steps or records uses only IEEE
+  `+ - * /` and rounding — no `ln`/`exp`/`powf`/`sqrt`/trig — so records
+  and transcripts are identical on every platform (the golden fixtures
+  must pass on the Windows MSVC job too).
+- **Frozen formats.** `SessionRecord` is history.jsonl v1: fields are only
+  appended, `#[serde(default)]`, written only when they differ from the
+  default; never `deny_unknown_fields`. `CoreError` Display texts are
+  stored in history and never change (each has a test).
+- **Portable.** It must check for aarch64-apple-ios, aarch64-apple-ios-sim,
+  aarch64-apple-darwin, aarch64-linux-android, x86_64-linux-android and
+  armv7-linux-androideabi with no SDK (CI's mobile job).
+- **Audio safety is every consumer's duty**: the library never chooses or
+  opens an output; its crate docs say so.
+- Golden fixtures (`tests/fixtures/golden/`, and the shared records in
+  `cw-trainer-core/tests/fixtures/records/`) pin the CLI's behaviour and
+  files byte for byte; a refactor never changes them.
 
 ## Runtime
 - **Tokio must NEVER be used.** The trainer has no async code: the

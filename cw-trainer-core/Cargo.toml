@@ -7,6 +7,7 @@ license.workspace = true
 homepage.workspace = true
 repository.workspace = true
 rust-version.workspace = true
+readme = "README.md"
 description = "Morse copy-practice sessions without I/O: contacts, overs, scoring, adaptive speed and records"
 
 # Exactly these three, and nothing that reaches a terminal, a file, the

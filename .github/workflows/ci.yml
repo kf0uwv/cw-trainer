@@ -59,6 +59,9 @@ jobs:
       - name: Tests with audio-device
         run: cargo test --workspace --all-targets --features audio-device
 
+      - name: Doctests (not in --all-targets)
+        run: cargo test --workspace --doc
+
       - name: cw-trainer-core dependency graph
         # The library's whole normal-dependency graph, on every target, is
         # exactly this: cat-morse, serde and thiserror, and what those need.

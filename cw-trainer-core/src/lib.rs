@@ -22,6 +22,49 @@
 //! [`cat_morse`], which is re-exported so a consumer links the very same
 //! crate.
 //!
+//! # A session, start to finish
+//!
+//! A [`CopySession`] decides; its caller shows, plays, collects the copy
+//! and stores (see [`copy`]). Here a perfect operator copies one QSO:
+//!
+//! ```
+//! use cw_trainer_core::cat_morse::Callsign;
+//! use cw_trainer_core::options::{CopyOptions, Farnsworth, Kind, Level};
+//! use cw_trainer_core::{CopySession, OverOutcome, Step};
+//!
+//! let options = CopyOptions {
+//!     kind: Kind::RagChew,
+//!     level: Level::Beginner,
+//!     qsos: 1,
+//!     call: Callsign::parse("N0CALL").unwrap(),
+//!     wpm: 18,
+//!     farnsworth: Farnsworth::Preset,
+//!     pitch_hz: 600.0,
+//!     seed: 1,
+//!     adapt: true,
+//!     started: cw_trainer_core::time::iso8601_utc(1_700_000_000),
+//!     audio_out: "Headphones".to_string(),
+//! };
+//! let mut session = CopySession::new(options, 48_000)?;
+//! while let Some(step) = session.next_step()? {
+//!     if let Step::ThemOver(over) = step {
+//!         // A real caller plays `over.audio.renderer()?` to the output
+//!         // the operator chose, and collects what was copied.
+//!         let copy = over.expected.join(" ");
+//!         let report = session.submit(OverOutcome::Copied {
+//!             text: copy,
+//!             agn: 0,
+//!             audio_gaps: 0,
+//!             clipped: 0,
+//!         })?;
+//!         assert_eq!(report.result.score.cer(), 0.0);
+//!     }
+//! }
+//! let finished = session.finish(None);
+//! assert!(!finished.record.quit_early);
+//! # Ok::<(), cw_trainer_core::CoreError>(())
+//! ```
+//!
 //! # Audio safety: every consumer's duty
 //!
 //! This library produces audio to render; it never chooses or opens an
