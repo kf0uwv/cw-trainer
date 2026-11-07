@@ -27,9 +27,10 @@ port). It moved here from `ts570d cw`; `ts570d` no longer carries it.
   ic7100) and never directly on `cat-framework` or any `cat-transport-*`.
 - Engine/protocol changes belong in radio-cat-rs (its ADR 0001 / rule 7),
   never a local fork or vendored copy.
-- The `[patch."https://github.com/kf0uwv/radio-cat-rs"]` section points at
-  the sibling checkout `../radio-cat-rs` and is TEMPORARY until cat-morse is
-  in a tagged release — same arrangement as kf0uwv/ts570d.
+- All four radio-cat-rs crates are pinned once, in the root
+  `[workspace.dependencies]`, to one radio-cat-rs revision: **pinned by rev
+  until radio-cat-rs is tagged, then by tag.** No `[patch]`, no path to a
+  sibling checkout (`tests/structure.rs` enforces both).
 
 ## Runtime
 - **Tokio must NEVER be used.** The trainer has no async code: the

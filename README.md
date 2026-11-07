@@ -12,7 +12,7 @@ default (which, on many stations, feeds the radio's audio input).
 
 ## Building
 
-Requires a sibling checkout of radio-cat-rs at `../radio-cat-rs` for now.
+radio-cat-rs is fetched by Cargo, pinned to one revision in `Cargo.toml`.
 
 ```
 cargo build                          # no sound card support

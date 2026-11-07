@@ -1,3 +1,16 @@
+[workspace]
+resolver = "2"
+
+# Every radio-cat-rs crate this repository uses, pinned once, all to the
+# same revision so exactly one copy of each is linked. Pinned by rev until
+# radio-cat-rs tags a release that carries cat-morse, then by tag. See
+# CLAUDE.md.
+[workspace.dependencies]
+cat-morse = { git = "https://github.com/kf0uwv/radio-cat-rs", rev = "b821bf47ceb57b8f23e437ca3136cd745235e180" }
+cat-native = { git = "https://github.com/kf0uwv/radio-cat-rs", rev = "b821bf47ceb57b8f23e437ca3136cd745235e180" }
+cat-signal = { git = "https://github.com/kf0uwv/radio-cat-rs", rev = "b821bf47ceb57b8f23e437ca3136cd745235e180" }
+cat-signal-audio = { git = "https://github.com/kf0uwv/radio-cat-rs", rev = "b821bf47ceb57b8f23e437ca3136cd745235e180" }
+
 [package]
 name = "cw-trainer"
 version = "0.1.0"
@@ -22,15 +35,13 @@ path = "src/main.rs"
 # This program is a cat-native *client* of a radio's server and depends on
 # nothing radio-specific -- never a radio crate (ts570d's `radio`, ft991a,
 # ic7100), never cat-framework or any cat-transport-* crate. See CLAUDE.md.
-cat-native = { git = "https://github.com/kf0uwv/radio-cat-rs", tag = "v0.8.0" }
-cat-signal = { git = "https://github.com/kf0uwv/radio-cat-rs", tag = "v0.8.0" }
-cat-signal-audio = { git = "https://github.com/kf0uwv/radio-cat-rs", tag = "v0.8.0" }
+cat-native = { workspace = true }
+cat-signal = { workspace = true }
+cat-signal-audio = { workspace = true }
 # Radio-independent Morse code (radio-cat-rs ADR 0021): scripts, keying,
-# band synthesis and copy scoring. On radio-cat-rs main but not in a
-# tagged release yet, so a path dependency. `serde` so
-# per-character stats and session history can be persisted.
-# TEMPORARY: revert to a tagged git dependency once radio-cat-rs releases it.
-cat-morse = { path = "../radio-cat-rs/cat-morse", features = ["serde"] }
+# band synthesis and copy scoring. `serde` so per-character stats and
+# session history can be persisted.
+cat-morse = { workspace = true, features = ["serde"] }
 
 # audio.json, stats and session history.
 serde = { version = "1.0.203", features = ["derive"] }
@@ -55,17 +66,6 @@ default = []
 # sound headers (ALSA on Linux). Without it the trainer cannot play a note
 # and says so rather than guessing.
 audio-device = ["cat-signal-audio/device"]
-
-# TEMPORARY local patch -- see cat-morse above. Every radio-cat-rs crate is
-# redirected to the sibling checkout (../radio-cat-rs) so exactly one copy
-# of each is linked: cat-morse is a path dependency, and without this the
-# git and path copies of shared crates (cat-signal, ...) would be distinct
-# types. Remove this whole section, and restore cat-morse to a `git`/`tag`
-# dependency, when the library is released. Mirrors kf0uwv/ts570d.
-[patch."https://github.com/kf0uwv/radio-cat-rs"]
-cat-native = { path = "../radio-cat-rs/cat-native" }
-cat-signal = { path = "../radio-cat-rs/cat-signal" }
-cat-signal-audio = { path = "../radio-cat-rs/cat-signal-audio" }
 
 [profile.release]
 lto = true

@@ -210,6 +210,59 @@ fn no_radio_transport_or_tokio_dependency() {
     assert!(found.is_empty(), "forbidden dependencies: {found:?}");
 }
 
+/// The one radio-cat-rs revision every crate here builds against.
+const RADIO_CAT_RS: &str = "https://github.com/kf0uwv/radio-cat-rs";
+
+#[test]
+fn radio_cat_rs_is_pinned_once_by_rev_with_no_patch() {
+    // Pinned by rev until radio-cat-rs tags a release with cat-morse, then
+    // by tag: either way in one place, `[workspace.dependencies]`, with no
+    // `[patch]` and no sibling checkout, so a git consumer resolves the
+    // same sources this repository tests against.
+    let manifest = fs::read_to_string(root().join("Cargo.toml")).unwrap();
+    let mut section = "";
+    let mut pins = Vec::new();
+    for line in manifest.lines() {
+        let line = line.trim();
+        if line.starts_with('#') {
+            continue;
+        }
+        if line.starts_with('[') {
+            section = line;
+            assert!(!line.starts_with("[patch"), "no [patch] section: {line}");
+            continue;
+        }
+        assert!(
+            !line.contains("../radio-cat-rs"),
+            "no path to a sibling checkout: {line}"
+        );
+        if line.contains(RADIO_CAT_RS) {
+            assert_eq!(
+                section, "[workspace.dependencies]",
+                "radio-cat-rs is named only in [workspace.dependencies]: {line}"
+            );
+            let rev = line
+                .split("rev = \"")
+                .nth(1)
+                .and_then(|r| r.split('"').next())
+                .unwrap_or_else(|| panic!("pinned by rev: {line}"));
+            let name = line.split('=').next().unwrap().trim();
+            pins.push((name.to_string(), rev.to_string()));
+        }
+    }
+    let mut names: Vec<&str> = pins.iter().map(|p| p.0.as_str()).collect();
+    names.sort();
+    assert_eq!(
+        names,
+        ["cat-morse", "cat-native", "cat-signal", "cat-signal-audio"]
+    );
+    assert!(
+        pins.windows(2).all(|w| w[0].1 == w[1].1),
+        "one revision for every crate: {pins:?}"
+    );
+    assert_eq!(pins[0].1.len(), 40, "a full commit hash: {pins:?}");
+}
+
 #[test]
 fn the_scanner_finds_what_it_is_looking_for() {
     // Guards the guards: a scanner that never matches would pass forever.

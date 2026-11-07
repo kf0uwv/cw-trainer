@@ -9,36 +9,15 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  # cw-trainer builds against a sibling checkout of radio-cat-rs: Cargo.toml
-  # has a `path = "../radio-cat-rs/cat-morse"` dependency and a [patch]
-  # pointing every radio-cat-rs crate there (TEMPORARY, as in kf0uwv/ts570d).
-  # So both jobs check the two repositories out side by side and run from
-  # cw-trainer/. This is the one place that says which radio-cat-rs to
-  # build against: main (it carries cat-morse and ADR 0023's CW wire types /
-  # Connection::connect_timeout, merged via radio-cat-rs PR #19). Pin a tag
-  # instead once radio-cat-rs releases cat-morse and the [patch] goes away.
-  RADIO_CAT_RS_REF: main
 
 jobs:
   test:
     name: Linux
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: cw-trainer
 
     steps:
-      - name: Checkout cw-trainer
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          path: cw-trainer
-
-      - name: Checkout radio-cat-rs (sibling)
-        uses: actions/checkout@v4
-        with:
-          repository: kf0uwv/radio-cat-rs
-          ref: ${{ env.RADIO_CAT_RS_REF }}
-          path: radio-cat-rs
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -53,8 +32,8 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-            cw-trainer/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('cw-trainer/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -78,24 +57,12 @@ jobs:
   windows:
     name: Windows (MSVC)
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: cw-trainer
 
     # Authoritative Windows verification (radio-cat-rs ADR 0012):
     # x86_64-pc-windows-msvc is the host target here, so no --target flag.
     steps:
-      - name: Checkout cw-trainer
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          path: cw-trainer
-
-      - name: Checkout radio-cat-rs (sibling)
-        uses: actions/checkout@v4
-        with:
-          repository: kf0uwv/radio-cat-rs
-          ref: ${{ env.RADIO_CAT_RS_REF }}
-          path: radio-cat-rs
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -109,8 +76,8 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-            cw-trainer/target
-          key: ${{ runner.os }}-cargo-windows-msvc-${{ hashFiles('cw-trainer/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-cargo-windows-msvc-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-windows-msvc-
 

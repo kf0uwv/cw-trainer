@@ -86,6 +86,7 @@ checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 [[package]]
 name = "cat-framework"
 version = "0.9.0"
+source = "git+https://github.com/kf0uwv/radio-cat-rs?rev=b821bf47ceb57b8f23e437ca3136cd745235e180#b821bf47ceb57b8f23e437ca3136cd745235e180"
 dependencies = [
  "cat-signal",
  "serde",
@@ -95,6 +96,7 @@ dependencies = [
 [[package]]
 name = "cat-layout"
 version = "0.7.3"
+source = "git+https://github.com/kf0uwv/radio-cat-rs?rev=b821bf47ceb57b8f23e437ca3136cd745235e180#b821bf47ceb57b8f23e437ca3136cd745235e180"
 dependencies = [
  "serde",
 ]
@@ -102,6 +104,7 @@ dependencies = [
 [[package]]
 name = "cat-morse"
 version = "0.9.0"
+source = "git+https://github.com/kf0uwv/radio-cat-rs?rev=b821bf47ceb57b8f23e437ca3136cd745235e180#b821bf47ceb57b8f23e437ca3136cd745235e180"
 dependencies = [
  "serde",
  "thiserror",
@@ -110,6 +113,7 @@ dependencies = [
 [[package]]
 name = "cat-native"
 version = "0.9.0"
+source = "git+https://github.com/kf0uwv/radio-cat-rs?rev=b821bf47ceb57b8f23e437ca3136cd745235e180#b821bf47ceb57b8f23e437ca3136cd745235e180"
 dependencies = [
  "cat-framework",
  "cat-layout",
@@ -121,6 +125,7 @@ dependencies = [
 [[package]]
 name = "cat-signal"
 version = "0.9.0"
+source = "git+https://github.com/kf0uwv/radio-cat-rs?rev=b821bf47ceb57b8f23e437ca3136cd745235e180#b821bf47ceb57b8f23e437ca3136cd745235e180"
 dependencies = [
  "async-trait",
  "serde",
@@ -129,6 +134,7 @@ dependencies = [
 [[package]]
 name = "cat-signal-audio"
 version = "0.9.0"
+source = "git+https://github.com/kf0uwv/radio-cat-rs?rev=b821bf47ceb57b8f23e437ca3136cd745235e180#b821bf47ceb57b8f23e437ca3136cd745235e180"
 dependencies = [
  "async-trait",
  "cat-signal",
