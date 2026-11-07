@@ -368,7 +368,8 @@ pub mod tests {
             farnsworth: Farnsworth::Off,
             pitch_hz: 600.0,
             seed,
-            adapt: false,
+            adapt: None,
+            band: None,
             started: "2026-10-06T00:00:00Z".to_string(),
             audio_out: "Test speaker".to_string(),
         }
@@ -409,12 +410,14 @@ pub mod tests {
             total: Score::default(),
             quit_early: false,
             ended_by_error: None,
+            adapt_rule: None,
+            band: None,
         }
     }
 
     /// The keys a perfect operator presses for QSO `qso` (adapt off).
     fn perfect_keys(opts: &CopyOptions, qso: u32) -> Vec<(Duration, Key)> {
-        let speed = SpeedState::new(opts.wpm, opts.farnsworth, opts.level, false).current;
+        let speed = SpeedState::new(opts.wpm, opts.farnsworth, opts.level, None).current;
         let plan = plan_qso(opts, qso, speed).unwrap();
         let mut keys = Vec::new();
         for over in group_overs(&plan.script) {
@@ -568,7 +571,7 @@ pub mod tests {
     #[test]
     fn a_pileup_is_scored_in_any_order() {
         let opts = options(Kind::Pileup, 1, 11);
-        let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, false).current;
+        let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, None).current;
         let plan = plan_qso(&opts, 0, speed).unwrap();
         let mut keys = Vec::new();
         for over in group_overs(&plan.script) {
@@ -696,7 +699,7 @@ pub mod tests {
     #[test]
     fn adaptation_is_announced_and_carried_into_the_record() {
         let mut opts = options(Kind::RagChew, 1, 7);
-        opts.adapt = true;
+        opts.adapt = Some(crate::AdaptRule::default());
         let (r, _, out) = run(&opts, perfect_keys(&opts, 0));
         let scored = r.overs.iter().filter(|o| !o.skipped).count();
         assert!(

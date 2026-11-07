@@ -14,7 +14,8 @@
 
 //! Speed: the setting a QSO is sent at, and the adaptive rule.
 //!
-//! Over a window of the last [`WINDOW`] scored overs (skips excluded):
+//! The default [`AdaptRule`] (the CLI's): over a window of the last
+//! [`WINDOW`] scored overs (skips excluded):
 //! a CER of at most [`RAISE_CER`] with no AGN raises the speed by
 //! [`STEP_WPM`]; a CER of at least [`LOWER_CER`] lowers it. With
 //! Farnsworth spacing on, the *effective* speed moves first, until it
@@ -63,17 +64,96 @@ impl SpeedSetting {
     }
 }
 
+/// The adaptive-speed rule. Its [`Default`] is the CLI's rule: the
+/// constants above.
+///
+/// `min_wpm`/`max_wpm` bound the *character* speed: a session starts at
+/// its requested speed clamped into them, and adaptation never leaves
+/// them. A Farnsworth effective speed is only ever lowered to
+/// [`MIN_WPM`], and closes up to the character speed before that rises.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct AdaptRule {
+    /// Scored overs looked at (skips excluded); at least 1.
+    pub window: u32,
+    /// At or below this CER, with no AGN in the window, speed goes up.
+    pub raise_cer: f64,
+    /// At or above this CER, speed goes down. Greater than `raise_cer`.
+    pub lower_cer: f64,
+    /// How much one adaptation moves the speed; at least 1.
+    pub step_wpm: u32,
+    /// The slowest character speed, at least [`MIN_WPM`].
+    pub min_wpm: u32,
+    /// The fastest character speed, at most [`MAX_WPM`].
+    pub max_wpm: u32,
+}
+
+impl Default for AdaptRule {
+    fn default() -> Self {
+        AdaptRule {
+            window: WINDOW as u32,
+            raise_cer: RAISE_CER,
+            lower_cer: LOWER_CER,
+            step_wpm: STEP_WPM,
+            min_wpm: MIN_WPM,
+            max_wpm: MAX_WPM,
+        }
+    }
+}
+
+impl AdaptRule {
+    /// Why this rule cannot be used, if it cannot.
+    pub fn problem(&self) -> Option<String> {
+        let r = self;
+        if r.window == 0 {
+            return Some("the adaptive window must be at least 1 over".to_string());
+        }
+        if r.step_wpm == 0 {
+            return Some("the adaptive step must be at least 1 wpm".to_string());
+        }
+        if !(r.raise_cer.is_finite() && r.lower_cer.is_finite()) {
+            return Some(format!(
+                "the adaptive CERs must be finite, got {} and {}",
+                r.raise_cer, r.lower_cer
+            ));
+        }
+        if r.raise_cer >= r.lower_cer {
+            return Some(format!(
+                "the raise CER {} must be below the lower CER {}",
+                r.raise_cer, r.lower_cer
+            ));
+        }
+        if !(MIN_WPM..=MAX_WPM).contains(&r.min_wpm)
+            || !(MIN_WPM..=MAX_WPM).contains(&r.max_wpm)
+            || r.min_wpm > r.max_wpm
+        {
+            return Some(format!(
+                "the adaptive speeds {}-{} wpm must lie within {MIN_WPM}-{MAX_WPM} wpm, \
+                 slowest first",
+                r.min_wpm, r.max_wpm
+            ));
+        }
+        None
+    }
+}
+
 /// The current speed and the adaptive rule's memory.
 #[derive(Debug, Clone)]
 pub struct SpeedState {
     pub current: SpeedSetting,
-    adapt: bool,
+    rule: Option<AdaptRule>,
     window: Vec<(Score, u32)>,
 }
 
 impl SpeedState {
-    pub fn new(char_wpm: u32, farnsworth: Farnsworth, level: Level, adapt: bool) -> Self {
-        let char_wpm = char_wpm.clamp(MIN_WPM, MAX_WPM);
+    /// The speed a session starts at; `rule` `None` keeps it fixed.
+    pub fn new(
+        char_wpm: u32,
+        farnsworth: Farnsworth,
+        level: Level,
+        rule: Option<AdaptRule>,
+    ) -> Self {
+        let (lo, hi) = rule.map_or((MIN_WPM, MAX_WPM), |r| (r.min_wpm, r.max_wpm));
+        let char_wpm = char_wpm.clamp(lo, hi);
         let effective = match farnsworth {
             Farnsworth::Off => None,
             Farnsworth::Wpm(w) => Some(w),
@@ -88,18 +168,16 @@ impl SpeedState {
                 char_wpm,
                 effective_wpm: effective,
             },
-            adapt,
+            rule,
             window: Vec::new(),
         }
     }
 
     /// Record a scored over; `Some` when the speed changes.
     pub fn record(&mut self, score: &Score, agn: u32) -> Option<SpeedSetting> {
-        if !self.adapt {
-            return None;
-        }
+        let rule = self.rule?;
         self.window.push((*score, agn));
-        if self.window.len() < WINDOW {
+        if self.window.len() < rule.window as usize {
             return None;
         }
         let mut total = Score::default();
@@ -109,10 +187,10 @@ impl SpeedState {
         let any_agn = self.window.iter().any(|(_, a)| *a > 0);
         let cer = total.cer();
         let before = self.current;
-        if cer <= RAISE_CER && !any_agn {
-            self.raise();
-        } else if cer >= LOWER_CER {
-            self.lower();
+        if cer <= rule.raise_cer && !any_agn {
+            self.raise(&rule);
+        } else if cer >= rule.lower_cer {
+            self.lower(&rule);
         } else {
             self.window.remove(0);
             return None;
@@ -121,20 +199,22 @@ impl SpeedState {
         (self.current != before).then_some(self.current)
     }
 
-    fn raise(&mut self) {
+    fn raise(&mut self, rule: &AdaptRule) {
         let c = &mut self.current;
+        let step = rule.step_wpm;
         match c.effective_wpm {
-            Some(e) if e + STEP_WPM >= c.char_wpm => c.effective_wpm = None,
-            Some(e) => c.effective_wpm = Some(e + STEP_WPM),
-            None => c.char_wpm = (c.char_wpm + STEP_WPM).min(MAX_WPM),
+            Some(e) if e + step >= c.char_wpm => c.effective_wpm = None,
+            Some(e) => c.effective_wpm = Some(e + step),
+            None => c.char_wpm = (c.char_wpm + step).min(rule.max_wpm),
         }
     }
 
-    fn lower(&mut self) {
+    fn lower(&mut self, rule: &AdaptRule) {
         let c = &mut self.current;
+        let step = rule.step_wpm;
         match c.effective_wpm {
-            Some(e) => c.effective_wpm = Some(e.saturating_sub(STEP_WPM).max(MIN_WPM)),
-            None => c.char_wpm = c.char_wpm.saturating_sub(STEP_WPM).max(MIN_WPM),
+            Some(e) => c.effective_wpm = Some(e.saturating_sub(step).max(MIN_WPM)),
+            None => c.char_wpm = c.char_wpm.saturating_sub(step).max(rule.min_wpm),
         }
     }
 }
@@ -168,7 +248,12 @@ mod tests {
 
     #[test]
     fn four_clean_overs_raise_the_speed() {
-        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, true);
+        let mut s = SpeedState::new(
+            20,
+            Farnsworth::Off,
+            Level::Intermediate,
+            Some(AdaptRule::default()),
+        );
         for _ in 0..3 {
             assert_eq!(s.record(&score(0, 20), 0), None);
         }
@@ -178,7 +263,12 @@ mod tests {
 
     #[test]
     fn a_poor_window_lowers_the_speed() {
-        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, true);
+        let mut s = SpeedState::new(
+            20,
+            Farnsworth::Off,
+            Level::Intermediate,
+            Some(AdaptRule::default()),
+        );
         for _ in 0..3 {
             s.record(&score(5, 20), 0);
         }
@@ -187,7 +277,12 @@ mod tests {
 
     #[test]
     fn an_agn_in_the_window_blocks_a_raise() {
-        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, true);
+        let mut s = SpeedState::new(
+            20,
+            Farnsworth::Off,
+            Level::Intermediate,
+            Some(AdaptRule::default()),
+        );
         s.record(&score(0, 20), 1);
         for _ in 0..3 {
             assert_eq!(s.record(&score(0, 20), 0), None);
@@ -198,7 +293,12 @@ mod tests {
 
     #[test]
     fn farnsworth_spacing_closes_up_before_the_characters_speed_up() {
-        let mut s = SpeedState::new(20, Farnsworth::Wpm(16), Level::Intermediate, true);
+        let mut s = SpeedState::new(
+            20,
+            Farnsworth::Wpm(16),
+            Level::Intermediate,
+            Some(AdaptRule::default()),
+        );
         let raise = |s: &mut SpeedState| {
             let mut last = None;
             for _ in 0..WINDOW {
@@ -213,15 +313,25 @@ mod tests {
 
     #[test]
     fn speed_stays_within_bounds_and_no_adapt_means_no_change() {
-        let mut s = SpeedState::new(MAX_WPM, Farnsworth::Off, Level::Advanced, true);
+        let mut s = SpeedState::new(
+            MAX_WPM,
+            Farnsworth::Off,
+            Level::Advanced,
+            Some(AdaptRule::default()),
+        );
         for _ in 0..WINDOW {
             assert_eq!(s.record(&score(0, 20), 0), None);
         }
-        let mut s = SpeedState::new(MIN_WPM, Farnsworth::Off, Level::Beginner, true);
+        let mut s = SpeedState::new(
+            MIN_WPM,
+            Farnsworth::Off,
+            Level::Beginner,
+            Some(AdaptRule::default()),
+        );
         for _ in 0..WINDOW {
             assert_eq!(s.record(&score(10, 20), 0), None);
         }
-        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Beginner, false);
+        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Beginner, None);
         for _ in 0..10 {
             assert_eq!(s.record(&score(10, 20), 0), None);
         }
@@ -229,9 +339,19 @@ mod tests {
 
     #[test]
     fn the_preset_farnsworth_applies_only_below_the_character_speed() {
-        let s = SpeedState::new(20, Farnsworth::Preset, Level::Beginner, true);
+        let s = SpeedState::new(
+            20,
+            Farnsworth::Preset,
+            Level::Beginner,
+            Some(AdaptRule::default()),
+        );
         assert_eq!(s.current.effective_wpm, Some(10));
-        let s = SpeedState::new(8, Farnsworth::Preset, Level::Beginner, true);
+        let s = SpeedState::new(
+            8,
+            Farnsworth::Preset,
+            Level::Beginner,
+            Some(AdaptRule::default()),
+        );
         assert_eq!(s.current.effective_wpm, None);
     }
 

@@ -28,7 +28,7 @@ use cw_trainer_core::copy::{
 use cw_trainer_core::options::{CopyOptions, Farnsworth, Kind, Level};
 use cw_trainer_core::plan::{group_overs, plan_qso, Over};
 use cw_trainer_core::record::SessionRecord;
-use cw_trainer_core::speed::{SpeedSetting, SpeedState};
+use cw_trainer_core::speed::{AdaptRule, SpeedSetting, SpeedState};
 use cw_trainer_core::CoreError;
 
 const RATE: u32 = 8000;
@@ -43,7 +43,8 @@ fn options(kind: Kind, level: Level, qsos: u32, seed: u64) -> CopyOptions {
         farnsworth: Farnsworth::Off,
         pitch_hz: 600.0,
         seed,
-        adapt: false,
+        adapt: None,
+        band: None,
         started: "2026-11-07T12:00:00Z".to_string(),
         audio_out: "Test speaker".to_string(),
     }
@@ -110,7 +111,7 @@ fn fixture_record(name: &str) -> SessionRecord {
 #[test]
 fn a_ragchew_steps_through_each_qsos_overs_in_order() {
     let opts = options(Kind::RagChew, Level::Intermediate, 2, 7);
-    let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, false).current;
+    let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, None).current;
     let mut s = session(&opts);
     let steps = drive_perfectly(&mut s);
     let mut i = 0;
@@ -384,7 +385,7 @@ fn the_record_carries_the_options_and_the_session_stats() {
 #[test]
 fn a_speed_change_shows_at_qso_end_and_applies_from_the_next_qso() {
     let mut opts = options(Kind::RagChew, Level::Intermediate, 2, 7);
-    opts.adapt = true;
+    opts.adapt = Some(AdaptRule::default());
     let mut s = session(&opts);
     let start = s.speed();
     let steps = drive_perfectly(&mut s);
@@ -628,7 +629,7 @@ fn driven_as_the_cli_drives_it_the_record_is_the_clis_record() {
         fixture_record("you-quit")
     );
     let mut adapt = options(Kind::RagChew, Level::Intermediate, 2, 7);
-    adapt.adapt = true;
+    adapt.adapt = Some(AdaptRule::default());
     assert_eq!(
         as_the_cli(&adapt, false, None, None),
         fixture_record("adapt")

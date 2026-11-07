@@ -47,7 +47,7 @@ use crate::session::{
 use crate::store::Store;
 use crate::term::tests::ScriptedTerminal;
 use crate::term::Key;
-use crate::{CopyOptions, Farnsworth, Kind, Level};
+use crate::{AdaptRule, CopyOptions, Farnsworth, Kind, Level};
 
 fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/golden")
@@ -92,7 +92,8 @@ fn options(kind: Kind, level: Level, qsos: u32, seed: u64) -> CopyOptions {
         farnsworth: Farnsworth::Off,
         pitch_hz: 600.0,
         seed,
-        adapt: false,
+        adapt: None,
+        band: None,
         started: "2026-11-07T12:00:00Z".to_string(),
         audio_out: "Test speaker".to_string(),
     }
@@ -213,7 +214,7 @@ fn operator(
 }
 
 fn fixed_speeds(opts: &CopyOptions) -> Vec<SpeedSetting> {
-    let s = SpeedState::new(opts.wpm, opts.farnsworth, opts.level, false).current;
+    let s = SpeedState::new(opts.wpm, opts.farnsworth, opts.level, None).current;
     vec![s; opts.qsos as usize]
 }
 
@@ -402,7 +403,7 @@ fn golden_quit_in_a_you_line() {
 #[test]
 fn golden_adaptive_speed_across_qsos() {
     let mut opts = options(Kind::RagChew, Level::Intermediate, 2, 7);
-    opts.adapt = true;
+    opts.adapt = Some(AdaptRule::default());
     // QSO 2 is planned at the speed QSO 1 ends on, so learn it first.
     let first = {
         let tmp = tempfile::tempdir().unwrap();

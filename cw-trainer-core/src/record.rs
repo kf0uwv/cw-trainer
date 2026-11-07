@@ -19,10 +19,11 @@
 //! history file, version 1) and is frozen: fields are only ever appended,
 //! with `#[serde(default)]`, so every old line still reads.
 
+use cat_morse::scenario::BandConditions;
 use cat_morse::Score;
 use serde::{Deserialize, Serialize};
 
-use crate::speed::SpeedSetting;
+use crate::speed::{AdaptRule, SpeedSetting};
 
 /// One over's result, as kept in the history.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -64,4 +65,11 @@ pub struct SessionRecord {
     /// everything scored before it is still here.
     #[serde(default)]
     pub ended_by_error: Option<String>,
+    /// The adaptive rule, when it was not the default one (absent from
+    /// the line otherwise, so a default session writes what it always did).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub adapt_rule: Option<AdaptRule>,
+    /// The band conditions, when they were not the level's own.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub band: Option<BandConditions>,
 }

@@ -38,7 +38,7 @@
 
 use std::time::Duration;
 
-use cat_morse::scenario::Transmission;
+use cat_morse::scenario::{band_channel, Transmission};
 use cat_morse::{
     align, align_unordered, timing, Alignment, Channel, ChannelRenderer, CharStats, Fist, Score,
     ScoreOptions, UnorderedAlignment,
@@ -49,7 +49,7 @@ use crate::options::{CopyOptions, Farnsworth, MAX_PITCH_HZ, MAX_WPM, MIN_PITCH_H
 use crate::over::over_channel;
 use crate::plan::{expected_for, over_indices, plan_qso, OverAt, QsoPlan};
 use crate::record::{OverResult, SessionRecord};
-use crate::speed::{SpeedSetting, SpeedState};
+use crate::speed::{AdaptRule, SpeedSetting, SpeedState};
 
 /// The lowest sample rate a session renders at: enough for the highest
 /// pitch plus a station's offset, with room to spare below Nyquist.
@@ -242,6 +242,16 @@ fn check_options(opts: &CopyOptions) -> Result<(), CoreError> {
         return Err(CoreError::InvalidOptions(format!(
             "pitch {p} Hz is outside {MIN_PITCH_HZ}-{MAX_PITCH_HZ} Hz"
         )));
+    }
+    if let Some(why) = opts.adapt.as_ref().and_then(AdaptRule::problem) {
+        return Err(CoreError::InvalidOptions(why));
+    }
+    if let Some(band) = opts.band {
+        // cat-morse checks band conditions as it builds a band.
+        let mut d = opts.level.difficulty();
+        d.band = band;
+        band_channel(&d, Vec::new(), MIN_SAMPLE_RATE_HZ, opts.pitch_hz, 0)
+            .map_err(|e| CoreError::InvalidOptions(format!("band conditions: {e}")))?;
     }
     if let Farnsworth::Wpm(w) = opts.farnsworth {
         if !(MIN_WPM..=MAX_WPM).contains(&w) {
@@ -525,6 +535,8 @@ impl CopySession {
                 total: self.total,
                 quit_early,
                 ended_by_error,
+                adapt_rule: opts.adapt.filter(|r| *r != AdaptRule::default()),
+                band: opts.band.filter(|b| *b != opts.level.difficulty().band),
             },
             session_stats: self.session_stats,
         }
@@ -548,7 +560,8 @@ mod tests {
             farnsworth: Farnsworth::Off,
             pitch_hz: 600.0,
             seed: 7,
-            adapt: false,
+            adapt: None,
+            band: None,
             started: "2026-11-07T12:00:00Z".to_string(),
             audio_out: "Test speaker".to_string(),
         }

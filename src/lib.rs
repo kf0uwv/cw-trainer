@@ -60,6 +60,7 @@ pub use cw_trainer_core::options::{
     CopyOptions, Farnsworth, Kind, Level, DEFAULT_PITCH_HZ, DEFAULT_WPM, MAX_PITCH_HZ, MAX_WPM,
     MIN_PITCH_HZ, MIN_WPM,
 };
+pub use cw_trainer_core::speed::AdaptRule;
 pub use cw_trainer_core::time;
 
 /// The program's name as it appears on the command line.

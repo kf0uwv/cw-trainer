@@ -51,6 +51,14 @@ let finished = session.finish(None); // record + this session's stats
   `ended_by_error`. After a library error, only `finish` is left.
 - `CopySession` and an over's audio are `Send`.
 
+## Session rules
+
+`CopyOptions::adapt` is the adaptive-speed rule (`None` keeps the speed
+fixed); `AdaptRule::default()` is the CLI's rule. `CopyOptions::band`
+replaces the level's band conditions (cat-morse's `BandConditions`).
+`CopySession::new` refuses an unusable rule or band. A record notes a
+non-default rule or band in trailing fields, and only then.
+
 ## Persistence is the caller's
 
 The library returns plain serde types and stores nothing. `SessionRecord`

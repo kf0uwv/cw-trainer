@@ -120,7 +120,8 @@ where
         farnsworth: args.farnsworth,
         pitch_hz,
         seed: args.seed.unwrap_or(now.as_nanos() as u64),
-        adapt: args.adapt,
+        adapt: args.adapt.then(crate::AdaptRule::default),
+        band: None,
         started: iso8601_utc(now.as_secs()),
         audio_out: label,
     };

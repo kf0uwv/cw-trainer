@@ -16,8 +16,10 @@
 
 use std::str::FromStr;
 
-use cat_morse::scenario::Difficulty;
+use cat_morse::scenario::{BandConditions, Difficulty};
 use cat_morse::Callsign;
+
+use crate::speed::AdaptRule;
 
 /// The tone used when neither `--pitch` nor the radio says otherwise.
 pub const DEFAULT_PITCH_HZ: f32 = 600.0;
@@ -161,7 +163,11 @@ pub struct CopyOptions {
     pub farnsworth: Farnsworth,
     pub pitch_hz: f32,
     pub seed: u64,
-    pub adapt: bool,
+    /// The adaptive-speed rule; `None` keeps the speed fixed.
+    pub adapt: Option<AdaptRule>,
+    /// Band conditions in place of the level's own (noise, fading,
+    /// static, QRM, receive filter); `None` keeps the level's.
+    pub band: Option<BandConditions>,
     /// When the session started (ISO 8601 UTC), for the history file.
     pub started: String,
     /// The output device's name, shown in the banner and kept in history.

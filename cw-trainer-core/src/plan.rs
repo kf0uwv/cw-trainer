@@ -157,7 +157,10 @@ pub struct QsoPlan {
 pub fn plan_qso(opts: &CopyOptions, qso: u32, speed: SpeedSetting) -> Result<QsoPlan, CoreError> {
     let mut rng = Rng::new(opts.seed).fork(u64::from(qso));
     let (kind, label) = scenario_kind(opts.kind, opts.level, &mut rng);
-    let difficulty = difficulty_for(opts.level, speed);
+    let mut difficulty = difficulty_for(opts.level, speed);
+    if let Some(band) = opts.band {
+        difficulty.band = band;
+    }
     let script = generate(&ScenarioConfig {
         kind,
         my_call: opts.call.clone(),
@@ -191,7 +194,8 @@ mod tests {
             farnsworth: Farnsworth::Off,
             pitch_hz: 600.0,
             seed,
-            adapt: false,
+            adapt: None,
+            band: None,
             started: "2026-10-06T00:00:00Z".to_string(),
             audio_out: "Test speaker".to_string(),
         }
@@ -203,7 +207,7 @@ mod tests {
         let plan = plan_qso(
             &opts,
             0,
-            SpeedState::new(20, Farnsworth::Off, Level::Intermediate, false).current,
+            SpeedState::new(20, Farnsworth::Off, Level::Intermediate, None).current,
         )
         .unwrap();
         let overs = group_overs(&plan.script);
@@ -220,7 +224,7 @@ mod tests {
     #[test]
     fn pileup_callers_starting_together_are_one_over_with_staggered_starts() {
         let opts = options(Kind::Pileup, 1, 11);
-        let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, false).current;
+        let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, None).current;
         let plan = plan_qso(&opts, 0, speed).unwrap();
         let overs = group_overs(&plan.script);
         let first = overs
@@ -263,7 +267,7 @@ mod tests {
     #[test]
     fn the_same_seed_plans_the_same_qso_and_each_qso_differs() {
         let opts = options(Kind::Mixed, 3, 42);
-        let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, false).current;
+        let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, None).current;
         let a = plan_qso(&opts, 1, speed).unwrap();
         let b = plan_qso(&opts, 1, speed).unwrap();
         assert_eq!(a.script, b.script);

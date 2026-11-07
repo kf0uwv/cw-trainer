@@ -41,7 +41,8 @@
 //!     farnsworth: Farnsworth::Preset,
 //!     pitch_hz: 600.0,
 //!     seed: 1,
-//!     adapt: true,
+//!     adapt: Some(Default::default()),
+//!     band: None,
 //!     started: cw_trainer_core::time::iso8601_utc(1_700_000_000),
 //!     audio_out: "Headphones".to_string(),
 //! };
