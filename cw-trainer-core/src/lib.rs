@@ -37,5 +37,10 @@
 
 pub use cat_morse;
 
+pub mod error;
 pub mod options;
+pub mod over;
+pub mod plan;
 pub mod speed;
+
+pub use error::CoreError;

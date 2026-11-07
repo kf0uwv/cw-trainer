@@ -33,21 +33,21 @@
 use std::io;
 use std::time::Duration;
 
-use cat_morse::scenario::{ContestExchange, Difficulty, Party, Start, Transmission};
-use cat_morse::{
-    align, align_unordered, generate, timing, Channel, CharStats, Fist, Rng, ScenarioConfig,
-    ScenarioKind, Score, ScoreOptions, Script,
-};
+use cat_morse::{align, align_unordered, timing, Channel, CharStats, Fist, Score, ScoreOptions};
 use serde::{Deserialize, Serialize};
 
 use super::audio::{over_channel, AudioSink};
 use super::store::Store;
 use super::term::{Key, Terminal};
 use super::view::{self, NL};
-use super::{CopyOptions, Kind, Level};
+use super::CopyOptions;
+pub use cw_trainer_core::plan::{
+    expected_for, group_overs, plan_qso, scenario_kind, Over, QsoPlan,
+};
 pub use cw_trainer_core::speed::{
     difficulty_for, SpeedSetting, SpeedState, LOWER_CER, RAISE_CER, STEP_WPM, WINDOW,
 };
+use cw_trainer_core::CoreError;
 
 /// How much audio to keep queued ahead of the speaker.
 const QUEUE_AHEAD: Duration = Duration::from_millis(150);
@@ -61,99 +61,8 @@ pub enum CwError {
     Terminal(#[from] io::Error),
     #[error("audio: {0}")]
     Audio(String),
-    #[error("{0}")]
-    Script(String),
-}
-
-/// The concrete scenario for one QSO, drawn from `rng`.
-pub fn scenario_kind(kind: Kind, level: Level, rng: &mut Rng) -> (ScenarioKind, &'static str) {
-    let kind = match kind {
-        Kind::Mixed => *rng.pick(&[
-            Kind::RagChew,
-            Kind::Contest,
-            Kind::Pota,
-            Kind::Sota,
-            Kind::Pileup,
-        ]),
-        k => k,
-    };
-    let sk = match kind {
-        Kind::RagChew | Kind::Mixed => ScenarioKind::RagChew,
-        Kind::Contest => ScenarioKind::Contest {
-            exchange: if rng.chance(0.5) {
-                ContestExchange::CqZone
-            } else {
-                ContestExchange::Serial
-            },
-            cut_numbers: level == Level::Advanced,
-        },
-        Kind::Pota => ScenarioKind::Pota {
-            park_to_park: rng.chance(0.25),
-        },
-        Kind::Sota => ScenarioKind::Sota {
-            summit_to_summit: rng.chance(0.25),
-        },
-        Kind::Pileup => {
-            let (lo, hi) = match level {
-                Level::Beginner => (2, 3),
-                Level::Intermediate => (3, 5),
-                Level::Advanced => (5, 8),
-            };
-            ScenarioKind::DxPileup {
-                callers: rng.range_u32(lo, hi) as u8,
-            }
-        }
-    };
-    (sk, kind.name())
-}
-
-/// One turn on the air.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Over<'a> {
-    /// The operator's own line: shown, not played.
-    You(&'a Transmission),
-    /// One or more stations; `starts` are relative to the over.
-    Them {
-        lines: Vec<&'a Transmission>,
-        starts: Vec<Duration>,
-    },
-}
-
-/// Group a script's transmissions into overs: a run of *them* lines that
-/// start with the previous one (a pileup) is one over.
-pub fn group_overs(script: &Script) -> Vec<Over<'_>> {
-    let mut overs: Vec<Over<'_>> = Vec::new();
-    for t in &script.transmissions {
-        match (t.from, t.start, overs.last_mut()) {
-            (Party::You, _, _) => overs.push(Over::You(t)),
-            (Party::Them(_), Start::WithPrevious { delay }, Some(Over::Them { lines, starts })) => {
-                let at = *starts.last().expect("non-empty over") + delay;
-                lines.push(t);
-                starts.push(at);
-            }
-            (Party::Them(_), _, _) => overs.push(Over::Them {
-                lines: vec![t],
-                starts: vec![Duration::ZERO],
-            }),
-        }
-    }
-    overs
-}
-
-/// What is expected from one *them* over: the text, or (several stations
-/// at once) every word that was actually sent, to be copied in any order.
-///
-/// Every word, not each call once: a pileup caller often sends his call
-/// twice (`W1ABC W1ABC`), and a faithful copy of that must score clean —
-/// otherwise good copy reads as insertions and drags the speed down.
-pub fn expected_for(lines: &[&Transmission]) -> Vec<String> {
-    if lines.len() == 1 {
-        return vec![lines[0].text.clone()];
-    }
-    lines
-        .iter()
-        .flat_map(|l| l.text.split_whitespace().map(String::from))
-        .collect()
+    #[error(transparent)]
+    Core(#[from] CoreError),
 }
 
 /// One over's result, as kept in the history.
@@ -236,7 +145,7 @@ fn copy_over<S: AudioSink, T: Terminal>(
         sink.clear();
         let mut renderer = channel
             .renderer()
-            .map_err(|e| CwError::Script(format!("cannot render: {e}")))?;
+            .map_err(|e| CwError::Core(CoreError::Render(e)))?;
         let mut buf = vec![0.0f32; block];
         let mut pending: Vec<f32> = Vec::new();
         let mut feeding = true;
@@ -350,34 +259,6 @@ fn you_line<T: Terminal>(text: &str, speed: SpeedSetting, term: &mut T) -> Resul
             _ => {}
         }
     }
-}
-
-/// Everything one QSO is built from; shared with the tests, which replay
-/// it to know what a perfect operator would type.
-pub struct QsoPlan {
-    pub label: &'static str,
-    pub difficulty: Difficulty,
-    pub script: Script,
-    pub rng: Rng,
-}
-
-pub fn plan_qso(opts: &CopyOptions, qso: u32, speed: SpeedSetting) -> Result<QsoPlan, CwError> {
-    let mut rng = Rng::new(opts.seed).fork(u64::from(qso));
-    let (kind, label) = scenario_kind(opts.kind, opts.level, &mut rng);
-    let difficulty = difficulty_for(opts.level, speed);
-    let script = generate(&ScenarioConfig {
-        kind,
-        my_call: opts.call.clone(),
-        difficulty: difficulty.clone(),
-        seed: rng.next_u64(),
-    })
-    .map_err(|e| CwError::Script(format!("cannot generate a contact: {e}")))?;
-    Ok(QsoPlan {
-        label,
-        difficulty,
-        script,
-        rng,
-    })
 }
 
 /// The session so far: what survives an error.
@@ -511,8 +392,7 @@ fn run_qsos<S: AudioSink, T: Terminal>(
                         sink.sample_rate_hz(),
                         opts.pitch_hz,
                         seed,
-                    )
-                    .map_err(CwError::Script)?;
+                    )?;
                     channel.gain = p.gain;
                     let sig = plan
                         .script
@@ -563,12 +443,12 @@ fn run_qsos<S: AudioSink, T: Terminal>(
                             let (score, shown) = if several {
                                 let refs: Vec<&str> = expected.iter().map(String::as_str).collect();
                                 let u = align_unordered(&refs, &text, &score_opts)
-                                    .map_err(|e| CwError::Script(e.to_string()))?;
+                                    .map_err(|e| CwError::Core(CoreError::Align(e)))?;
                                 p.session_stats.record_unordered(&u);
                                 (u.score(), view::unordered_result(&u, copied.agn))
                             } else {
                                 let a = align(&expected[0], &text, &score_opts)
-                                    .map_err(|e| CwError::Script(e.to_string()))?;
+                                    .map_err(|e| CwError::Core(CoreError::Align(e)))?;
                                 p.session_stats.record(&a);
                                 (a.score(), view::over_result(&a, copied.agn))
                             };
@@ -618,7 +498,7 @@ pub mod tests {
     use super::*;
     use crate::audio::tests::FakeSink;
     use crate::term::tests::ScriptedTerminal;
-    use crate::Farnsworth;
+    use crate::{Farnsworth, Kind, Level};
 
     pub fn options(kind: Kind, qsos: u32, seed: u64) -> CopyOptions {
         CopyOptions {
@@ -710,63 +590,15 @@ pub mod tests {
     }
 
     #[test]
-    fn a_ragchew_alternates_single_station_overs_with_your_lines() {
-        let opts = options(Kind::RagChew, 1, 7);
-        let plan = plan_qso(
-            &opts,
-            0,
-            SpeedState::new(20, Farnsworth::Off, Level::Intermediate, false).current,
-        )
-        .unwrap();
-        let overs = group_overs(&plan.script);
-        assert_eq!(overs.len(), plan.script.transmissions.len());
-        assert!(overs.iter().any(|o| matches!(o, Over::You(_))));
-        for o in &overs {
-            if let Over::Them { lines, starts } = o {
-                assert_eq!(lines.len(), 1);
-                assert_eq!(starts, &vec![Duration::ZERO]);
-            }
-        }
-    }
-
-    #[test]
-    fn pileup_callers_starting_together_are_one_over_with_staggered_starts() {
-        let opts = options(Kind::Pileup, 1, 11);
-        let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, false).current;
-        let plan = plan_qso(&opts, 0, speed).unwrap();
-        let overs = group_overs(&plan.script);
-        let first = overs
-            .iter()
-            .find_map(|o| match o {
-                Over::Them { lines, starts } if lines.len() > 1 => Some((lines, starts)),
-                _ => None,
-            })
-            .expect("a pileup has a multi-station over");
-        let (lines, starts) = first;
-        assert_eq!(lines.len(), starts.len());
-        assert!(starts.windows(2).all(|w| w[0] <= w[1]));
-        assert_eq!(starts[0], Duration::ZERO);
-        assert!(expected_for(lines).len() >= 2);
-    }
-
-    #[test]
-    fn a_call_sent_twice_in_a_pileup_is_expected_twice() {
-        // The reviewer's case: a faithful copy of what was sent is clean,
-        // in any order.
-        let line = |text: &str| Transmission {
-            from: Party::Them(0),
-            text: text.to_string(),
-            start: Start::AfterPrevious {
-                gap: Duration::ZERO,
-            },
-        };
-        let (a, b) = (line("W1ABC W1ABC"), line("K2XYZ"));
-        let expected = expected_for(&[&a, &b]);
-        assert_eq!(expected, vec!["W1ABC", "W1ABC", "K2XYZ"]);
-        let refs: Vec<&str> = expected.iter().map(String::as_str).collect();
-        for copy in ["W1ABC W1ABC K2XYZ", "K2XYZ W1ABC W1ABC"] {
-            let u = align_unordered(&refs, copy, &ScoreOptions::default()).unwrap();
-            assert_eq!(u.score().cer(), 0.0, "{copy}");
+    fn a_library_error_keeps_its_exact_text() {
+        // History files store this text; the CLI adds nothing to it.
+        use cat_morse::{CodecError, ScenarioError};
+        for e in [
+            CoreError::NoStation,
+            CoreError::Generate(ScenarioError::InvalidSetting("x")),
+            CoreError::Align(CodecError::UnterminatedProsign { offset: 1 }),
+        ] {
+            assert_eq!(CwError::from(e.clone()).to_string(), e.to_string());
         }
     }
 
