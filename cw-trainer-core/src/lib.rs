@@ -41,6 +41,7 @@ pub mod error;
 pub mod options;
 pub mod over;
 pub mod plan;
+pub mod record;
 pub mod speed;
 
 pub use error::CoreError;

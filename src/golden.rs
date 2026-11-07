@@ -17,11 +17,14 @@
 //! Each scenario runs a seeded session with a scripted operator (perfect
 //! copy, typos, AGN, skips, partial copy, quitting) on doubles only — a
 //! fake speaker and a scripted terminal, never a sound card — and compares
-//! byte for byte with `tests/fixtures/golden/`:
+//! byte for byte with fixtures:
 //!
-//! - `<name>.record.json`: the session record (pretty JSON);
-//! - `<name>.transcript.txt`: everything the terminal showed (`\r\n`);
-//! - `<name>.stats.json` and `<name>.history.jsonl`: the files written;
+//! - `<name>.record.json` and `<name>.history.jsonl`: the session record
+//!   (pretty) and the history file written, in
+//!   `cw-trainer-core/tests/fixtures/records/`, shared with the library's
+//!   own tests (which also check that old history lines still parse);
+//! - in `tests/fixtures/golden/`, `<name>.transcript.txt`: everything the
+//!   terminal showed (`\r\n`), and `<name>.stats.json`: the file written;
 //! - `<name>.pcm.json`: length (exact) and RMS (to a tolerance) of each
 //!   play of an over.
 //!
@@ -50,15 +53,24 @@ fn fixtures() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/golden")
 }
 
+/// Records and history lines are shared with the library's own tests.
+fn record_fixtures() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("cw-trainer-core/tests/fixtures/records")
+}
+
 fn bless() -> bool {
     std::env::var_os("CW_TRAINER_BLESS").is_some_and(|v| v == "1")
 }
 
 /// Compare `actual` with the fixture `name`, or record it when blessing.
 fn check(name: &str, actual: &str) {
-    let path = fixtures().join(name);
+    check_in(&fixtures(), name, actual)
+}
+
+fn check_in(dir: &Path, name: &str, actual: &str) {
+    let path = dir.join(name);
     if bless() {
-        fs::create_dir_all(fixtures()).unwrap();
+        fs::create_dir_all(dir).unwrap();
         fs::write(&path, actual).unwrap();
         return;
     }
@@ -284,7 +296,8 @@ fn golden(
             .expect("a failed session is still kept"),
     };
 
-    check(
+    check_in(
+        &record_fixtures(),
         &format!("{name}.record.json"),
         &(serde_json::to_string_pretty(&record).unwrap() + "\n"),
     );
@@ -293,7 +306,8 @@ fn golden(
         &format!("{name}.stats.json"),
         &fs::read_to_string(dir.join("stats.json")).unwrap(),
     );
-    check(
+    check_in(
+        &record_fixtures(),
         &format!("{name}.history.jsonl"),
         &fs::read_to_string(dir.join("history.jsonl")).unwrap(),
     );
@@ -475,24 +489,4 @@ fn golden_second_session_recalls_the_first_and_merges_stats() {
         Quits::default(),
     );
     golden("second", tmp.path(), &second, keys, Faults::default());
-}
-
-#[test]
-fn old_history_lines_still_parse() {
-    // Lines written before `audio_out` and `ended_by_error` existed, and
-    // with both: every one reads back.
-    let text = fs::read_to_string(fixtures().join("old-history.jsonl")).unwrap();
-    let records: Vec<SessionRecord> = text
-        .lines()
-        .map(|l| serde_json::from_str(l).unwrap())
-        .collect();
-    assert_eq!(records.len(), 3);
-    assert_eq!(records[0].audio_out, "");
-    assert_eq!(records[0].ended_by_error, None);
-    assert_eq!(records[1].audio_out, "Test speaker");
-    assert_eq!(records[1].ended_by_error, None);
-    assert_eq!(
-        records[2].ended_by_error.as_deref(),
-        Some("audio: device unplugged")
-    );
 }

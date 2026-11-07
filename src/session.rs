@@ -34,7 +34,6 @@ use std::io;
 use std::time::Duration;
 
 use cat_morse::{align, align_unordered, timing, Channel, CharStats, Fist, Score, ScoreOptions};
-use serde::{Deserialize, Serialize};
 
 use super::audio::{over_channel, AudioSink};
 use super::store::Store;
@@ -44,6 +43,7 @@ use super::CopyOptions;
 pub use cw_trainer_core::plan::{
     expected_for, group_overs, plan_qso, scenario_kind, Over, QsoPlan,
 };
+pub use cw_trainer_core::record::{OverResult, SessionRecord};
 pub use cw_trainer_core::speed::{
     difficulty_for, SpeedSetting, SpeedState, LOWER_CER, RAISE_CER, STEP_WPM, WINDOW,
 };
@@ -63,48 +63,6 @@ pub enum CwError {
     Audio(String),
     #[error(transparent)]
     Core(#[from] CoreError),
-}
-
-/// One over's result, as kept in the history.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct OverResult {
-    pub qso: u32,
-    pub kind: String,
-    /// The text sent, or each call for an over several stations sent.
-    pub expected: Vec<String>,
-    pub copied: String,
-    pub score: Score,
-    pub agn: u32,
-    pub skipped: bool,
-    /// Times the speaker ran dry mid-over.
-    pub audio_gaps: u32,
-    pub char_wpm: f64,
-    pub effective_wpm: f64,
-}
-
-/// A whole session, as kept in the history.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SessionRecord {
-    pub version: u32,
-    pub started: String,
-    pub seed: u64,
-    pub kind: String,
-    pub level: String,
-    pub call: String,
-    pub pitch_hz: f32,
-    /// The output device played to.
-    #[serde(default)]
-    pub audio_out: String,
-    pub start_speed: SpeedSetting,
-    pub end_speed: SpeedSetting,
-    pub overs: Vec<OverResult>,
-    /// Totals over every scored (not skipped) over.
-    pub total: Score,
-    pub quit_early: bool,
-    /// Set when the session was cut short by an error (the error's text);
-    /// everything scored before it is still here.
-    #[serde(default)]
-    pub ended_by_error: Option<String>,
 }
 
 enum Action {
