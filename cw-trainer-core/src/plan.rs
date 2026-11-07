@@ -80,17 +80,47 @@ pub enum Over<'a> {
 /// Group a script's transmissions into overs: a run of *them* lines that
 /// start with the previous one (a pileup) is one over.
 pub fn group_overs(script: &Script) -> Vec<Over<'_>> {
-    let mut overs: Vec<Over<'_>> = Vec::new();
-    for t in &script.transmissions {
+    let t = &script.transmissions;
+    over_indices(script)
+        .into_iter()
+        .map(|o| match o {
+            OverAt::You(i) => Over::You(&t[i]),
+            OverAt::Them { lines, starts } => Over::Them {
+                lines: lines.into_iter().map(|i| &t[i]).collect(),
+                starts,
+            },
+        })
+        .collect()
+}
+
+/// An [`Over`] by position in [`Script::transmissions`] rather than by
+/// reference, so it can be kept beside the script it indexes.
+#[derive(Debug, Clone, PartialEq)]
+pub enum OverAt {
+    You(usize),
+    Them {
+        lines: Vec<usize>,
+        starts: Vec<Duration>,
+    },
+}
+
+/// [`group_overs`], by position.
+pub fn over_indices(script: &Script) -> Vec<OverAt> {
+    let mut overs: Vec<OverAt> = Vec::new();
+    for (i, t) in script.transmissions.iter().enumerate() {
         match (t.from, t.start, overs.last_mut()) {
-            (Party::You, _, _) => overs.push(Over::You(t)),
-            (Party::Them(_), Start::WithPrevious { delay }, Some(Over::Them { lines, starts })) => {
+            (Party::You, _, _) => overs.push(OverAt::You(i)),
+            (
+                Party::Them(_),
+                Start::WithPrevious { delay },
+                Some(OverAt::Them { lines, starts }),
+            ) => {
                 let at = *starts.last().expect("non-empty over") + delay;
-                lines.push(t);
+                lines.push(i);
                 starts.push(at);
             }
-            (Party::Them(_), _, _) => overs.push(Over::Them {
-                lines: vec![t],
+            (Party::Them(_), _, _) => overs.push(OverAt::Them {
+                lines: vec![i],
                 starts: vec![Duration::ZERO],
             }),
         }
@@ -116,6 +146,7 @@ pub fn expected_for(lines: &[&Transmission]) -> Vec<String> {
 
 /// Everything one QSO is built from; shared with the tests, which replay
 /// it to know what a perfect operator would type.
+#[derive(Debug, Clone)]
 pub struct QsoPlan {
     pub label: &'static str,
     pub difficulty: Difficulty,

@@ -16,6 +16,8 @@
 
 use cat_morse::{CodecError, ScenarioError, SynthError, TimingError};
 
+use crate::copy::MIN_SAMPLE_RATE_HZ;
+
 /// Everything the library can fail with.
 ///
 /// The Display texts are part of the history format: a session cut short
@@ -40,6 +42,23 @@ pub enum CoreError {
     /// What was sent does not encode, so the copy cannot be scored.
     #[error("{0}")]
     Align(CodecError),
+    /// A sample rate too low to carry the session's pitch.
+    #[error("sample rate {0} Hz is below the minimum of {min} Hz", min = MIN_SAMPLE_RATE_HZ)]
+    SampleRate(u32),
+    /// Options a session cannot run with.
+    #[error("invalid options: {0}")]
+    InvalidOptions(String),
+    /// [`next_step`](crate::copy::CopySession::next_step) while a *them*
+    /// over still waits for its outcome.
+    #[error("a them over is still waiting for its outcome")]
+    OverPending,
+    /// [`submit`](crate::copy::CopySession::submit) with no *them* over
+    /// waiting.
+    #[error("no them over is waiting for an outcome")]
+    NoOverPending,
+    /// The session already failed; only `finish` is left.
+    #[error("the session has already failed")]
+    Failed,
 }
 
 #[cfg(test)]

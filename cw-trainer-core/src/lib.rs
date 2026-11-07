@@ -37,6 +37,7 @@
 
 pub use cat_morse;
 
+pub mod copy;
 pub mod error;
 pub mod options;
 pub mod over;
@@ -44,4 +45,5 @@ pub mod plan;
 pub mod record;
 pub mod speed;
 
+pub use copy::{CopySession, Finished, OverAudio, OverOutcome, OverReport, Shown, Step, ThemOver};
 pub use error::CoreError;
