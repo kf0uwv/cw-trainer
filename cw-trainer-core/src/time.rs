@@ -12,7 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! ISO 8601 timestamps for session history, without a date crate.
+//! ISO 8601 timestamps for session records, without a date crate.
+//!
+//! The library never reads a clock: the caller turns its own clock's Unix
+//! time into [`CopyOptions::started`](crate::options::CopyOptions) with
+//! [`iso8601_utc`].
 //!
 //! Copied from `iso8601_utc` in ts570d's calibration module (the trainer may
 //! not depend on a radio crate), together with its test.
