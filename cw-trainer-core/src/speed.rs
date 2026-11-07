@@ -76,8 +76,10 @@ pub struct AdaptRule {
     /// Scored overs looked at (skips excluded); at least 1.
     pub window: u32,
     /// At or below this CER, with no AGN in the window, speed goes up.
+    /// At least 0.
     pub raise_cer: f64,
-    /// At or above this CER, speed goes down. Greater than `raise_cer`.
+    /// At or above this CER, speed goes down. Greater than `raise_cer`,
+    /// at most 1.
     pub lower_cer: f64,
     /// How much one adaptation moves the speed: 1 to `MAX_WPM - MIN_WPM`.
     pub step_wpm: u32,
@@ -117,6 +119,12 @@ impl AdaptRule {
         if !(r.raise_cer.is_finite() && r.lower_cer.is_finite()) {
             return Some(format!(
                 "the adaptive CERs must be finite, got {} and {}",
+                r.raise_cer, r.lower_cer
+            ));
+        }
+        if r.raise_cer < 0.0 || r.lower_cer > 1.0 {
+            return Some(format!(
+                "the adaptive CERs must lie within 0-1, got {} and {}",
                 r.raise_cer, r.lower_cer
             ));
         }
@@ -264,6 +272,60 @@ mod tests {
             };
             assert!(r.problem().is_some(), "step {step}");
         }
+    }
+
+    #[test]
+    fn a_cer_exactly_at_a_threshold_moves_the_speed() {
+        // 1/20 and 3/20 are the very doubles 0.05 and 0.15.
+        assert_eq!(score(1, 20).cer(), RAISE_CER);
+        assert_eq!(score(3, 20).cer(), LOWER_CER);
+        let mut s = SpeedState::new(
+            20,
+            Farnsworth::Off,
+            Level::Intermediate,
+            Some(AdaptRule::default()),
+        );
+        let mut last = None;
+        for _ in 0..WINDOW {
+            last = s.record(&score(1, 20), 0);
+        }
+        assert_eq!(last.unwrap().char_wpm, 22, "cer == raise_cer raises");
+        let mut s = SpeedState::new(
+            20,
+            Farnsworth::Off,
+            Level::Intermediate,
+            Some(AdaptRule::default()),
+        );
+        for _ in 0..WINDOW {
+            last = s.record(&score(3, 20), 0);
+        }
+        assert_eq!(last.unwrap().char_wpm, 18, "cer == lower_cer lowers");
+    }
+
+    #[test]
+    fn cer_thresholds_outside_zero_to_one_are_refused() {
+        let d = AdaptRule::default();
+        for r in [
+            AdaptRule {
+                raise_cer: -0.01,
+                ..d
+            },
+            AdaptRule {
+                lower_cer: 1.01,
+                ..d
+            },
+        ] {
+            assert!(r.problem().is_some(), "{r:?}");
+        }
+        assert_eq!(
+            AdaptRule {
+                raise_cer: 0.0,
+                lower_cer: 1.0,
+                ..d
+            }
+            .problem(),
+            None
+        );
     }
 
     #[test]
