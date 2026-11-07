@@ -12,48 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! The copy session: QSO after QSO, over after over.
+//! The copy session at the terminal: QSO after QSO, over after over.
 //!
-//! For each QSO a script is generated (cat-morse) at the current speed.
-//! Its transmissions are grouped into *overs*: a *you* line is shown as a
-//! prompt and held for as long as it would take to send; a *them* over —
-//! one station, or several calling at once in a pileup — is synthesized
-//! and played while the operator types. Enter submits; the copy is scored
-//! per character and shown aligned against what was sent.
-//!
-//! # Adaptive speed
-//!
-//! Over a window of the last [`WINDOW`] scored overs (skips excluded):
-//! a CER of at most [`RAISE_CER`] with no AGN raises the speed by
-//! [`STEP_WPM`]; a CER of at least [`LOWER_CER`] lowers it. With
-//! Farnsworth spacing on, the *effective* speed moves first, until it
-//! meets the character speed and Farnsworth falls away. A change takes
-//! effect at the next QSO: a station does not change speed mid-contact.
+//! The session itself — contacts, overs, scoring, adaptive speed, the
+//! record — is the library's [`CopySession`] (`cw-trainer-core`). This
+//! module is its terminal and speaker: a *you* line is shown as a prompt
+//! and held for as long as it would take to send; a *them* over — one
+//! station, or several calling at once in a pileup — is played while the
+//! operator types. Enter submits; the copy is scored per character and
+//! shown aligned against what was sent. The speed rule is documented in
+//! `cw_trainer_core::speed`.
 
 use std::io;
 use std::time::Duration;
 
-use cat_morse::scenario::{ContestExchange, Difficulty, Party, Start, Transmission};
-use cat_morse::{
-    align, align_unordered, generate, timing, Channel, CharStats, Fist, Rng, ScenarioConfig,
-    ScenarioKind, Score, ScoreOptions, Script, Speed,
+use cw_trainer_core::copy::{
+    CopySession, Finished, OverAudio, OverOutcome, Shown, Step, MIN_SAMPLE_RATE_HZ,
 };
-use serde::{Deserialize, Serialize};
 
-use super::audio::{over_channel, AudioSink};
+use super::audio::AudioSink;
 use super::store::Store;
 use super::term::{Key, Terminal};
 use super::view::{self, NL};
-use super::{CopyOptions, Farnsworth, Kind, Level, MAX_WPM, MIN_WPM};
-
-/// Scored overs the adaptive rule looks at.
-pub const WINDOW: usize = 4;
-/// At or below this CER, with no AGN in the window, speed goes up.
-pub const RAISE_CER: f64 = 0.05;
-/// At or above this CER, speed goes down.
-pub const LOWER_CER: f64 = 0.15;
-/// How much one adaptation moves the speed.
-pub const STEP_WPM: u32 = 2;
+use super::CopyOptions;
+pub use cw_trainer_core::plan::{
+    expected_for, group_overs, plan_qso, scenario_kind, Over, QsoPlan,
+};
+pub use cw_trainer_core::record::{OverResult, SessionRecord};
+pub use cw_trainer_core::speed::{
+    difficulty_for, SpeedSetting, SpeedState, LOWER_CER, RAISE_CER, STEP_WPM, WINDOW,
+};
+pub use cw_trainer_core::CoreError;
 
 /// How much audio to keep queued ahead of the speaker.
 const QUEUE_AHEAD: Duration = Duration::from_millis(150);
@@ -67,255 +56,8 @@ pub enum CwError {
     Terminal(#[from] io::Error),
     #[error("audio: {0}")]
     Audio(String),
-    #[error("{0}")]
-    Script(String),
-}
-
-/// A speed: character speed, and Farnsworth effective speed if spaced out.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SpeedSetting {
-    pub char_wpm: u32,
-    pub effective_wpm: Option<u32>,
-}
-
-impl SpeedSetting {
-    pub fn describe(&self) -> String {
-        match self.effective_wpm {
-            Some(e) => format!("{} wpm (Farnsworth {e})", self.char_wpm),
-            None => format!("{} wpm", self.char_wpm),
-        }
-    }
-
-    /// The cat-morse speed for this setting.
-    pub fn speed(&self) -> Speed {
-        let c = f64::from(self.char_wpm);
-        match self.effective_wpm {
-            Some(e) => Speed::farnsworth(c, f64::from(e)),
-            None => Speed::wpm(c),
-        }
-        .or_else(|_| Speed::wpm(c))
-        .expect("char speed within 5..=60 is always valid")
-    }
-}
-
-/// The current speed and the adaptive rule's memory.
-#[derive(Debug, Clone)]
-pub struct SpeedState {
-    pub current: SpeedSetting,
-    adapt: bool,
-    window: Vec<(Score, u32)>,
-}
-
-impl SpeedState {
-    pub fn new(char_wpm: u32, farnsworth: Farnsworth, level: Level, adapt: bool) -> Self {
-        let char_wpm = char_wpm.clamp(MIN_WPM, MAX_WPM);
-        let effective = match farnsworth {
-            Farnsworth::Off => None,
-            Farnsworth::Wpm(w) => Some(w),
-            Farnsworth::Preset => level
-                .difficulty()
-                .farnsworth_effective
-                .map(|e| e.round() as u32),
-        }
-        .filter(|e| *e < char_wpm);
-        SpeedState {
-            current: SpeedSetting {
-                char_wpm,
-                effective_wpm: effective,
-            },
-            adapt,
-            window: Vec::new(),
-        }
-    }
-
-    /// Record a scored over; `Some` when the speed changes.
-    pub fn record(&mut self, score: &Score, agn: u32) -> Option<SpeedSetting> {
-        if !self.adapt {
-            return None;
-        }
-        self.window.push((*score, agn));
-        if self.window.len() < WINDOW {
-            return None;
-        }
-        let mut total = Score::default();
-        for (s, _) in &self.window {
-            total.add(s);
-        }
-        let any_agn = self.window.iter().any(|(_, a)| *a > 0);
-        let cer = total.cer();
-        let before = self.current;
-        if cer <= RAISE_CER && !any_agn {
-            self.raise();
-        } else if cer >= LOWER_CER {
-            self.lower();
-        } else {
-            self.window.remove(0);
-            return None;
-        }
-        self.window.clear();
-        (self.current != before).then_some(self.current)
-    }
-
-    fn raise(&mut self) {
-        let c = &mut self.current;
-        match c.effective_wpm {
-            Some(e) if e + STEP_WPM >= c.char_wpm => c.effective_wpm = None,
-            Some(e) => c.effective_wpm = Some(e + STEP_WPM),
-            None => c.char_wpm = (c.char_wpm + STEP_WPM).min(MAX_WPM),
-        }
-    }
-
-    fn lower(&mut self) {
-        let c = &mut self.current;
-        match c.effective_wpm {
-            Some(e) => c.effective_wpm = Some(e.saturating_sub(STEP_WPM).max(MIN_WPM)),
-            None => c.char_wpm = c.char_wpm.saturating_sub(STEP_WPM).max(MIN_WPM),
-        }
-    }
-}
-
-/// The level's preset, centred on the current speed.
-pub fn difficulty_for(level: Level, speed: SpeedSetting) -> Difficulty {
-    let mut d = level.difficulty();
-    let s = level.wpm_spread();
-    let lo = speed.char_wpm.saturating_sub(s).clamp(MIN_WPM, MAX_WPM);
-    let hi = (speed.char_wpm + s).clamp(MIN_WPM, MAX_WPM);
-    d.wpm = (lo, hi);
-    d.farnsworth_effective = speed.effective_wpm.map(f64::from);
-    d
-}
-
-/// The concrete scenario for one QSO, drawn from `rng`.
-pub fn scenario_kind(kind: Kind, level: Level, rng: &mut Rng) -> (ScenarioKind, &'static str) {
-    let kind = match kind {
-        Kind::Mixed => *rng.pick(&[
-            Kind::RagChew,
-            Kind::Contest,
-            Kind::Pota,
-            Kind::Sota,
-            Kind::Pileup,
-        ]),
-        k => k,
-    };
-    let sk = match kind {
-        Kind::RagChew | Kind::Mixed => ScenarioKind::RagChew,
-        Kind::Contest => ScenarioKind::Contest {
-            exchange: if rng.chance(0.5) {
-                ContestExchange::CqZone
-            } else {
-                ContestExchange::Serial
-            },
-            cut_numbers: level == Level::Advanced,
-        },
-        Kind::Pota => ScenarioKind::Pota {
-            park_to_park: rng.chance(0.25),
-        },
-        Kind::Sota => ScenarioKind::Sota {
-            summit_to_summit: rng.chance(0.25),
-        },
-        Kind::Pileup => {
-            let (lo, hi) = match level {
-                Level::Beginner => (2, 3),
-                Level::Intermediate => (3, 5),
-                Level::Advanced => (5, 8),
-            };
-            ScenarioKind::DxPileup {
-                callers: rng.range_u32(lo, hi) as u8,
-            }
-        }
-    };
-    (sk, kind.name())
-}
-
-/// One turn on the air.
-#[derive(Debug, Clone, PartialEq)]
-pub enum Over<'a> {
-    /// The operator's own line: shown, not played.
-    You(&'a Transmission),
-    /// One or more stations; `starts` are relative to the over.
-    Them {
-        lines: Vec<&'a Transmission>,
-        starts: Vec<Duration>,
-    },
-}
-
-/// Group a script's transmissions into overs: a run of *them* lines that
-/// start with the previous one (a pileup) is one over.
-pub fn group_overs(script: &Script) -> Vec<Over<'_>> {
-    let mut overs: Vec<Over<'_>> = Vec::new();
-    for t in &script.transmissions {
-        match (t.from, t.start, overs.last_mut()) {
-            (Party::You, _, _) => overs.push(Over::You(t)),
-            (Party::Them(_), Start::WithPrevious { delay }, Some(Over::Them { lines, starts })) => {
-                let at = *starts.last().expect("non-empty over") + delay;
-                lines.push(t);
-                starts.push(at);
-            }
-            (Party::Them(_), _, _) => overs.push(Over::Them {
-                lines: vec![t],
-                starts: vec![Duration::ZERO],
-            }),
-        }
-    }
-    overs
-}
-
-/// What is expected from one *them* over: the text, or (several stations
-/// at once) every word that was actually sent, to be copied in any order.
-///
-/// Every word, not each call once: a pileup caller often sends his call
-/// twice (`W1ABC W1ABC`), and a faithful copy of that must score clean —
-/// otherwise good copy reads as insertions and drags the speed down.
-pub fn expected_for(lines: &[&Transmission]) -> Vec<String> {
-    if lines.len() == 1 {
-        return vec![lines[0].text.clone()];
-    }
-    lines
-        .iter()
-        .flat_map(|l| l.text.split_whitespace().map(String::from))
-        .collect()
-}
-
-/// One over's result, as kept in the history.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct OverResult {
-    pub qso: u32,
-    pub kind: String,
-    /// The text sent, or each call for an over several stations sent.
-    pub expected: Vec<String>,
-    pub copied: String,
-    pub score: Score,
-    pub agn: u32,
-    pub skipped: bool,
-    /// Times the speaker ran dry mid-over.
-    pub audio_gaps: u32,
-    pub char_wpm: f64,
-    pub effective_wpm: f64,
-}
-
-/// A whole session, as kept in the history.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SessionRecord {
-    pub version: u32,
-    pub started: String,
-    pub seed: u64,
-    pub kind: String,
-    pub level: String,
-    pub call: String,
-    pub pitch_hz: f32,
-    /// The output device played to.
-    #[serde(default)]
-    pub audio_out: String,
-    pub start_speed: SpeedSetting,
-    pub end_speed: SpeedSetting,
-    pub overs: Vec<OverResult>,
-    /// Totals over every scored (not skipped) over.
-    pub total: Score,
-    pub quit_early: bool,
-    /// Set when the session was cut short by an error (the error's text);
-    /// everything scored before it is still here.
-    #[serde(default)]
-    pub ended_by_error: Option<String>,
+    #[error(transparent)]
+    Core(#[from] CoreError),
 }
 
 enum Action {
@@ -339,7 +81,7 @@ fn put<T: Terminal + ?Sized>(term: &mut T, text: &str) -> io::Result<()> {
 
 /// Play one over and collect the copy typed while it plays.
 fn copy_over<S: AudioSink, T: Terminal>(
-    channel: &Channel,
+    audio: &OverAudio,
     sink: &mut S,
     term: &mut T,
 ) -> Result<Copied, CwError> {
@@ -354,9 +96,7 @@ fn copy_over<S: AudioSink, T: Terminal>(
 
     'play: loop {
         sink.clear();
-        let mut renderer = channel
-            .renderer()
-            .map_err(|e| CwError::Script(format!("cannot render: {e}")))?;
+        let mut renderer = audio.renderer()?;
         let mut buf = vec![0.0f32; block];
         let mut pending: Vec<f32> = Vec::new();
         let mut feeding = true;
@@ -446,18 +186,14 @@ fn copy_over<S: AudioSink, T: Terminal>(
     }
 }
 
-/// Show the operator's own line for as long as it takes to send at
-/// `speed` (the speed the QSO started at). Returns `true` if the operator
-/// quit.
+/// Show the operator's own line for `hold`, as long as it takes to send
+/// at the speed the QSO started at. Returns `true` if the operator quit.
 ///
 /// Anything typed meanwhile is **discarded**, deliberately: the operator
 /// is sending, not copying, and a keystroke here is not copy of the next
 /// over, which has not been heard yet. Enter skips the wait.
-fn you_line<T: Terminal>(text: &str, speed: SpeedSetting, term: &mut T) -> Result<bool, CwError> {
+fn you_line<T: Terminal>(text: &str, hold: Duration, term: &mut T) -> Result<bool, CwError> {
     put(term, &format!("  you send> {text}{NL}"))?;
-    let hold = timing::key_text(text, speed.speed(), &Fist::perfect(), 0)
-        .map(|k| k.total())
-        .unwrap_or(Duration::from_secs(2));
     let deadline = term.now() + hold;
     loop {
         let now = term.now();
@@ -472,93 +208,46 @@ fn you_line<T: Terminal>(text: &str, speed: SpeedSetting, term: &mut T) -> Resul
     }
 }
 
-/// Everything one QSO is built from; shared with the tests, which replay
-/// it to know what a perfect operator would type.
-pub struct QsoPlan {
-    pub label: &'static str,
-    pub difficulty: Difficulty,
-    pub script: Script,
-    pub rng: Rng,
-}
-
-pub fn plan_qso(opts: &CopyOptions, qso: u32, speed: SpeedSetting) -> Result<QsoPlan, CwError> {
-    let mut rng = Rng::new(opts.seed).fork(u64::from(qso));
-    let (kind, label) = scenario_kind(opts.kind, opts.level, &mut rng);
-    let difficulty = difficulty_for(opts.level, speed);
-    let script = generate(&ScenarioConfig {
-        kind,
-        my_call: opts.call.clone(),
-        difficulty: difficulty.clone(),
-        seed: rng.next_u64(),
-    })
-    .map_err(|e| CwError::Script(format!("cannot generate a contact: {e}")))?;
-    Ok(QsoPlan {
-        label,
-        difficulty,
-        script,
-        rng,
-    })
-}
-
-/// The session so far: what survives an error.
-struct Progress {
-    speed: SpeedState,
-    session_stats: CharStats,
-    overs: Vec<OverResult>,
-    total: Score,
-    quit: bool,
-    gain: f32,
-}
-
 /// Run a copy session to the end (or until the operator quits).
 ///
-/// If anything fails part-way — the speaker unplugged, the terminal gone —
-/// what was copied is not lost: the stats are saved, the session goes into
-/// the history marked `ended_by_error`, the summary is shown if it can be,
-/// and then the error is returned.
+/// Every decision is the library's [`CopySession`]; this is its terminal,
+/// speaker and files. If anything fails part-way — the speaker unplugged,
+/// the terminal gone — what was copied is not lost: the stats are saved,
+/// the session goes into the history marked `ended_by_error`, the summary
+/// is shown if it can be, and then the error is returned.
 pub fn run_copy<S: AudioSink, T: Terminal>(
     opts: &CopyOptions,
     sink: &mut S,
     term: &mut T,
     store: &mut Store,
 ) -> Result<SessionRecord, CwError> {
-    let mut p = Progress {
-        speed: SpeedState::new(opts.wpm, opts.farnsworth, opts.level, opts.adapt),
-        session_stats: CharStats::new(),
-        overs: Vec::new(),
-        total: Score::default(),
-        quit: false,
-        gain: 1.0,
+    let mut session = match CopySession::new(opts.clone(), sink.sample_rate_hz()) {
+        Ok(s) => s,
+        // Refused before anything is played, shown or kept.
+        Err(CoreError::SampleRate(hz)) => {
+            return Err(CwError::Audio(format!(
+                "{:?} plays at {hz} Hz; copy practice needs at least {MIN_SAMPLE_RATE_HZ} Hz",
+                opts.audio_out
+            )))
+        }
+        Err(e) => return Err(e.into()),
     };
-    let start_speed = p.speed.current;
-    let outcome = run_qsos(opts, sink, term, store, &mut p);
+    let outcome = drive(&mut session, sink, term, store);
     if outcome.is_err() {
         sink.clear();
     }
+    let Finished {
+        record,
+        session_stats,
+    } = session.finish(outcome.as_ref().err().map(|e| e.to_string()));
 
-    let record = SessionRecord {
-        version: 1,
-        started: opts.started.clone(),
-        seed: opts.seed,
-        kind: opts.kind.name().to_string(),
-        level: opts.level.name().to_string(),
-        call: opts.call.as_str().to_string(),
-        pitch_hz: opts.pitch_hz,
-        audio_out: opts.audio_out.clone(),
-        start_speed,
-        end_speed: p.speed.current,
-        overs: p.overs,
-        total: p.total,
-        quit_early: p.quit || outcome.is_err(),
-        ended_by_error: outcome.as_ref().err().map(|e| e.to_string()),
-    };
     // Saved before anything is printed, so a dead terminal cannot lose it.
-    store.save_stats(&p.session_stats);
+    store.save_stats(&session_stats);
     store.append_history(&record);
 
     let mut shown = put(
         term,
-        &view::summary(&record, &p.session_stats, &store.all_time(&p.session_stats)),
+        &view::summary(&record, &session_stats, &store.all_time(&session_stats)),
     );
     for w in store.take_warnings() {
         shown = shown.and_then(|_| put(term, &format!("warning: {w}{NL}")));
@@ -568,14 +257,14 @@ pub fn run_copy<S: AudioSink, T: Terminal>(
     Ok(record)
 }
 
-fn run_qsos<S: AudioSink, T: Terminal>(
-    opts: &CopyOptions,
+/// Step the session to its end: show, play, collect, save as it says.
+fn drive<S: AudioSink, T: Terminal>(
+    session: &mut CopySession,
     sink: &mut S,
     term: &mut T,
     store: &mut Store,
-    p: &mut Progress,
 ) -> Result<(), CwError> {
-    let score_opts = ScoreOptions::default();
+    let opts = session.options();
     put(
         term,
         &format!(
@@ -587,7 +276,7 @@ fn run_qsos<S: AudioSink, T: Terminal>(
             opts.level.name(),
             opts.seed,
             opts.pitch_hz,
-            p.speed.current.describe(),
+            session.speed().describe(),
             opts.audio_out
         ),
     )?;
@@ -598,134 +287,74 @@ fn run_qsos<S: AudioSink, T: Terminal>(
         put(term, &view::last_session(last))?;
     }
 
-    for q in 0..opts.qsos {
-        // The whole QSO, "you" lines included, runs at the speed it
-        // started at; an adaptation applies from the next one.
-        let qso_speed = p.speed.current;
-        let plan = plan_qso(opts, q, qso_speed)?;
-        put(
-            term,
-            &format!(
-                "{NL}--- QSO {}/{}: {} ---{NL}",
-                q + 1,
-                opts.qsos,
-                plan.label
-            ),
-        )?;
-        let mut change = None;
-
-        for (i, over) in group_overs(&plan.script).iter().enumerate() {
-            match over {
-                Over::You(t) => {
-                    if you_line(&t.text, qso_speed, term)? {
-                        p.quit = true;
-                    }
+    while let Some(step) = session.next_step()? {
+        match step {
+            Step::QsoStart { qso, of, label } => {
+                put(term, &format!("{NL}--- QSO {qso}/{of}: {label} ---{NL}"))?;
+            }
+            Step::YouLine { text, hold } => {
+                if you_line(&text, hold, term)? {
+                    session.quit();
                 }
-                Over::Them { lines, starts } => {
-                    let seed = plan.rng.fork(1000 + i as u64).next_u64();
-                    let mut channel = over_channel(
-                        &plan.script,
-                        lines,
-                        starts,
-                        &plan.difficulty,
-                        sink.sample_rate_hz(),
-                        opts.pitch_hz,
-                        seed,
-                    )
-                    .map_err(CwError::Script)?;
-                    channel.gain = p.gain;
-                    let sig = plan
-                        .script
-                        .signal_for(lines[0])
-                        .map(|s| s.speed)
-                        .unwrap_or_else(|| qso_speed.speed());
-                    let several = lines.len() > 1;
-                    put(
-                        term,
-                        &format!(
-                            "{NL}  [QSO {} over {}, {:.0} wpm]{}{NL}",
-                            q + 1,
-                            i + 1,
-                            sig.char_wpm(),
-                            if several {
-                                " several stations: copy everything you hear, any order"
-                            } else {
-                                ""
-                            }
-                        ),
-                    )?;
-                    let copied = copy_over(&channel, sink, term)?;
-                    if copied.clipped > 0 {
-                        p.gain *= 0.8;
+            }
+            Step::ThemOver(over) => {
+                put(
+                    term,
+                    &format!(
+                        "{NL}  [QSO {} over {}, {:.0} wpm]{}{NL}",
+                        over.qso,
+                        over.over,
+                        over.char_wpm,
+                        if over.several {
+                            " several stations: copy everything you hear, any order"
+                        } else {
+                            ""
+                        }
+                    ),
+                )?;
+                let copied = copy_over(&over.audio, sink, term)?;
+                let (agn, audio_gaps, clipped) = (copied.agn, copied.gaps, copied.clipped);
+                match copied.action {
+                    Action::Quit => session.quit(),
+                    Action::Skipped => {
+                        session.submit(OverOutcome::Skipped {
+                            agn,
+                            audio_gaps,
+                            clipped,
+                        })?;
                     }
-                    let expected = expected_for(lines);
-                    let mut result = OverResult {
-                        qso: q + 1,
-                        kind: plan.label.to_string(),
-                        expected: expected.clone(),
-                        copied: String::new(),
-                        score: Score::default(),
-                        agn: copied.agn,
-                        skipped: false,
-                        audio_gaps: copied.gaps,
-                        char_wpm: sig.char_wpm(),
-                        effective_wpm: sig.effective_wpm(),
-                    };
-                    match copied.action {
-                        Action::Quit => {
-                            p.quit = true;
-                        }
-                        Action::Skipped => {
-                            result.skipped = true;
-                            p.overs.push(result);
-                        }
-                        Action::Submitted(text) => {
-                            let (score, shown) = if several {
-                                let refs: Vec<&str> = expected.iter().map(String::as_str).collect();
-                                let u = align_unordered(&refs, &text, &score_opts)
-                                    .map_err(|e| CwError::Script(e.to_string()))?;
-                                p.session_stats.record_unordered(&u);
-                                (u.score(), view::unordered_result(&u, copied.agn))
-                            } else {
-                                let a = align(&expected[0], &text, &score_opts)
-                                    .map_err(|e| CwError::Script(e.to_string()))?;
-                                p.session_stats.record(&a);
-                                (a.score(), view::over_result(&a, copied.agn))
-                            };
-                            // Recorded before it is shown: a failed print
-                            // must not lose a scored over.
-                            p.total.add(&score);
-                            result.copied = text;
-                            result.score = score;
-                            p.overs.push(result);
-                            if let Some(c) = p.speed.record(&score, copied.agn) {
-                                change = Some(c);
-                            }
-                            put(term, &shown)?;
-                            if copied.gaps > 0 {
-                                put(
-                                    term,
-                                    &format!(
-                                        "  (the audio dropped out {} time(s) during this over){NL}",
-                                        copied.gaps
-                                    ),
-                                )?;
-                            }
+                    Action::Submitted(text) => {
+                        // Recorded (by submit) before it is shown: a failed
+                        // print must not lose a scored over.
+                        let report = session.submit(OverOutcome::Copied {
+                            text,
+                            agn,
+                            audio_gaps,
+                            clipped,
+                        })?;
+                        let shown = match &report.shown {
+                            Some(Shown::Unordered(u)) => view::unordered_result(u, agn),
+                            Some(Shown::Ordered(a)) => view::over_result(a, agn),
+                            None => String::new(),
+                        };
+                        put(term, &shown)?;
+                        if audio_gaps > 0 {
+                            put(
+                                term,
+                                &format!(
+                                    "  (the audio dropped out {audio_gaps} time(s) during this over){NL}"
+                                ),
+                            )?;
                         }
                     }
                 }
             }
-            if p.quit {
-                break;
+            Step::QsoEnd { speed_change } => {
+                store.save_stats(session.session_stats());
+                if let Some(c) = speed_change {
+                    put(term, &format!("  speed now {}{NL}", c.describe()))?;
+                }
             }
-        }
-
-        store.save_stats(&p.session_stats);
-        if let Some(c) = change {
-            put(term, &format!("  speed now {}{NL}", c.describe()))?;
-        }
-        if p.quit {
-            break;
         }
     }
     Ok(())
@@ -733,11 +362,13 @@ fn run_qsos<S: AudioSink, T: Terminal>(
 
 #[cfg(test)]
 pub mod tests {
-    use cat_morse::Callsign;
+    use cat_morse::{align, timing, Callsign, Fist, Score, ScoreOptions};
+    use cw_trainer_core::copy::you_line_hold;
 
     use super::*;
     use crate::audio::tests::FakeSink;
     use crate::term::tests::ScriptedTerminal;
+    use crate::{Farnsworth, Kind, Level};
 
     pub fn options(kind: Kind, qsos: u32, seed: u64) -> CopyOptions {
         CopyOptions {
@@ -749,7 +380,8 @@ pub mod tests {
             farnsworth: Farnsworth::Off,
             pitch_hz: 600.0,
             seed,
-            adapt: false,
+            adapt: None,
+            band: None,
             started: "2026-10-06T00:00:00Z".to_string(),
             audio_out: "Test speaker".to_string(),
         }
@@ -790,12 +422,14 @@ pub mod tests {
             total: Score::default(),
             quit_early: false,
             ended_by_error: None,
+            adapt_rule: None,
+            band: None,
         }
     }
 
     /// The keys a perfect operator presses for QSO `qso` (adapt off).
     fn perfect_keys(opts: &CopyOptions, qso: u32) -> Vec<(Duration, Key)> {
-        let speed = SpeedState::new(opts.wpm, opts.farnsworth, opts.level, false).current;
+        let speed = SpeedState::new(opts.wpm, opts.farnsworth, opts.level, None).current;
         let plan = plan_qso(opts, qso, speed).unwrap();
         let mut keys = Vec::new();
         for over in group_overs(&plan.script) {
@@ -818,16 +452,6 @@ pub mod tests {
         (r, sink, term.text())
     }
 
-    fn score(cer_errors: usize, expected: usize) -> Score {
-        Score {
-            expected,
-            matches: expected - cer_errors,
-            substitutions: cer_errors,
-            deletions: 0,
-            insertions: 0,
-        }
-    }
-
     // --- grouping -------------------------------------------------------
 
     #[test]
@@ -839,148 +463,16 @@ pub mod tests {
     }
 
     #[test]
-    fn a_ragchew_alternates_single_station_overs_with_your_lines() {
-        let opts = options(Kind::RagChew, 1, 7);
-        let plan = plan_qso(
-            &opts,
-            0,
-            SpeedState::new(20, Farnsworth::Off, Level::Intermediate, false).current,
-        )
-        .unwrap();
-        let overs = group_overs(&plan.script);
-        assert_eq!(overs.len(), plan.script.transmissions.len());
-        assert!(overs.iter().any(|o| matches!(o, Over::You(_))));
-        for o in &overs {
-            if let Over::Them { lines, starts } = o {
-                assert_eq!(lines.len(), 1);
-                assert_eq!(starts, &vec![Duration::ZERO]);
-            }
+    fn a_library_error_keeps_its_exact_text() {
+        // History files store this text; the CLI adds nothing to it.
+        use cat_morse::{CodecError, ScenarioError};
+        for e in [
+            CoreError::NoStation,
+            CoreError::Generate(ScenarioError::InvalidSetting("x")),
+            CoreError::Align(CodecError::UnterminatedProsign { offset: 1 }),
+        ] {
+            assert_eq!(CwError::from(e.clone()).to_string(), e.to_string());
         }
-    }
-
-    #[test]
-    fn pileup_callers_starting_together_are_one_over_with_staggered_starts() {
-        let opts = options(Kind::Pileup, 1, 11);
-        let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, false).current;
-        let plan = plan_qso(&opts, 0, speed).unwrap();
-        let overs = group_overs(&plan.script);
-        let first = overs
-            .iter()
-            .find_map(|o| match o {
-                Over::Them { lines, starts } if lines.len() > 1 => Some((lines, starts)),
-                _ => None,
-            })
-            .expect("a pileup has a multi-station over");
-        let (lines, starts) = first;
-        assert_eq!(lines.len(), starts.len());
-        assert!(starts.windows(2).all(|w| w[0] <= w[1]));
-        assert_eq!(starts[0], Duration::ZERO);
-        assert!(expected_for(lines).len() >= 2);
-    }
-
-    #[test]
-    fn a_call_sent_twice_in_a_pileup_is_expected_twice() {
-        // The reviewer's case: a faithful copy of what was sent is clean,
-        // in any order.
-        let line = |text: &str| Transmission {
-            from: Party::Them(0),
-            text: text.to_string(),
-            start: Start::AfterPrevious {
-                gap: Duration::ZERO,
-            },
-        };
-        let (a, b) = (line("W1ABC W1ABC"), line("K2XYZ"));
-        let expected = expected_for(&[&a, &b]);
-        assert_eq!(expected, vec!["W1ABC", "W1ABC", "K2XYZ"]);
-        let refs: Vec<&str> = expected.iter().map(String::as_str).collect();
-        for copy in ["W1ABC W1ABC K2XYZ", "K2XYZ W1ABC W1ABC"] {
-            let u = align_unordered(&refs, copy, &ScoreOptions::default()).unwrap();
-            assert_eq!(u.score().cer(), 0.0, "{copy}");
-        }
-    }
-
-    // --- adaptive speed ---------------------------------------------------
-
-    #[test]
-    fn four_clean_overs_raise_the_speed() {
-        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, true);
-        for _ in 0..3 {
-            assert_eq!(s.record(&score(0, 20), 0), None);
-        }
-        let c = s.record(&score(0, 20), 0).expect("raised");
-        assert_eq!(c.char_wpm, 22);
-    }
-
-    #[test]
-    fn a_poor_window_lowers_the_speed() {
-        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, true);
-        for _ in 0..3 {
-            s.record(&score(5, 20), 0);
-        }
-        assert_eq!(s.record(&score(5, 20), 0).unwrap().char_wpm, 18);
-    }
-
-    #[test]
-    fn an_agn_in_the_window_blocks_a_raise() {
-        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, true);
-        s.record(&score(0, 20), 1);
-        for _ in 0..3 {
-            assert_eq!(s.record(&score(0, 20), 0), None);
-        }
-        // The AGN has slid out of the window now.
-        assert_eq!(s.record(&score(0, 20), 0).unwrap().char_wpm, 22);
-    }
-
-    #[test]
-    fn farnsworth_spacing_closes_up_before_the_characters_speed_up() {
-        let mut s = SpeedState::new(20, Farnsworth::Wpm(16), Level::Intermediate, true);
-        let raise = |s: &mut SpeedState| {
-            let mut last = None;
-            for _ in 0..WINDOW {
-                last = s.record(&score(0, 20), 0);
-            }
-            last.unwrap()
-        };
-        assert_eq!(raise(&mut s).effective_wpm, Some(18));
-        assert_eq!(raise(&mut s).effective_wpm, None);
-        assert_eq!(raise(&mut s).char_wpm, 22);
-    }
-
-    #[test]
-    fn speed_stays_within_bounds_and_no_adapt_means_no_change() {
-        let mut s = SpeedState::new(MAX_WPM, Farnsworth::Off, Level::Advanced, true);
-        for _ in 0..WINDOW {
-            assert_eq!(s.record(&score(0, 20), 0), None);
-        }
-        let mut s = SpeedState::new(MIN_WPM, Farnsworth::Off, Level::Beginner, true);
-        for _ in 0..WINDOW {
-            assert_eq!(s.record(&score(10, 20), 0), None);
-        }
-        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Beginner, false);
-        for _ in 0..10 {
-            assert_eq!(s.record(&score(10, 20), 0), None);
-        }
-    }
-
-    #[test]
-    fn the_preset_farnsworth_applies_only_below_the_character_speed() {
-        let s = SpeedState::new(20, Farnsworth::Preset, Level::Beginner, true);
-        assert_eq!(s.current.effective_wpm, Some(10));
-        let s = SpeedState::new(8, Farnsworth::Preset, Level::Beginner, true);
-        assert_eq!(s.current.effective_wpm, None);
-    }
-
-    #[test]
-    fn the_difficulty_is_centred_on_the_current_speed() {
-        let d = difficulty_for(
-            Level::Advanced,
-            SpeedSetting {
-                char_wpm: 7,
-                effective_wpm: None,
-            },
-        );
-        assert_eq!(d.wpm, (MIN_WPM, 11));
-        assert_eq!(d.farnsworth_effective, None);
     }
 
     // --- whole sessions -------------------------------------------------
@@ -1091,7 +583,7 @@ pub mod tests {
     #[test]
     fn a_pileup_is_scored_in_any_order() {
         let opts = options(Kind::Pileup, 1, 11);
-        let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, false).current;
+        let speed = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, None).current;
         let plan = plan_qso(&opts, 0, speed).unwrap();
         let mut keys = Vec::new();
         for over in group_overs(&plan.script) {
@@ -1119,7 +611,8 @@ pub mod tests {
         // No key: the clock runs out the hold time.
         let mut term = ScriptedTerminal::new(vec![(Duration::from_secs(600), Key::Enter)]);
         let start = term.now();
-        assert!(!you_line("CQ CQ DE KF0UWV K", speed, &mut term).unwrap());
+        let text = "CQ CQ DE KF0UWV K";
+        assert!(!you_line(text, you_line_hold(text, speed), &mut term).unwrap());
         let held = term.now() - start;
         let expect = timing::key_text("CQ CQ DE KF0UWV K", speed.speed(), &Fist::perfect(), 0)
             .unwrap()
@@ -1130,7 +623,7 @@ pub mod tests {
             (Duration::ZERO, Key::Char('X')),
             (Duration::ZERO, Key::Quit),
         ]);
-        assert!(you_line("TU", speed, &mut term).unwrap());
+        assert!(you_line("TU", you_line_hold("TU", speed), &mut term).unwrap());
     }
 
     #[test]
@@ -1157,6 +650,110 @@ pub mod tests {
         assert_eq!(r.overs[0].audio_gaps, 1);
         let total: u32 = r.overs.iter().map(|o| o.audio_gaps).sum();
         assert_eq!(total, 1, "the end-of-audio tick is not a gap");
+    }
+
+    #[test]
+    fn an_audio_dropout_is_reported_under_the_over_it_hit() {
+        let opts = options(Kind::RagChew, 1, 7);
+        let mut sink = FakeSink::new(8000);
+        sink.underrun_seq.borrow_mut().extend([0, 2, 2]);
+        let mut term = ScriptedTerminal::new(perfect_keys(&opts, 0));
+        let r = run_copy(&opts, &mut sink, &mut term, &mut Store::open(None)).unwrap();
+        assert_eq!(r.overs[0].audio_gaps, 2);
+        let text = term.text();
+        let line = "  (the audio dropped out 2 time(s) during this over)\r\n";
+        assert_eq!(text.matches(line).count(), 1, "{text}");
+        assert!(!text.contains("dropped out 0"), "{text}");
+        // Right after that over's result, before the next over.
+        let at = text.find(line).unwrap();
+        assert!(text[..at].contains("CER"), "{text}");
+        assert!(!text[..at].contains("over 3,"), "{text}");
+    }
+
+    /// A speaker that notes, at each clear, what `stats.json` held.
+    struct StatsWatcher {
+        inner: FakeSink,
+        dir: std::path::PathBuf,
+        seen: Vec<Option<String>>,
+    }
+
+    impl AudioSink for StatsWatcher {
+        fn sample_rate_hz(&self) -> u32 {
+            self.inner.sample_rate_hz()
+        }
+        fn write(&mut self, mono: &[f32]) -> Result<usize, String> {
+            self.inner.write(mono)
+        }
+        fn queued(&self) -> usize {
+            self.inner.queued()
+        }
+        fn clear(&mut self) {
+            self.inner.clear();
+            self.seen
+                .push(std::fs::read_to_string(self.dir.join("stats.json")).ok());
+        }
+    }
+
+    #[test]
+    fn stats_are_saved_after_each_qso_not_only_at_the_end() {
+        let opts = options(Kind::RagChew, 2, 7);
+        let mut keys = perfect_keys(&opts, 0);
+        keys.extend(perfect_keys(&opts, 1));
+        // What one QSO alone leaves in stats.json.
+        let after_one = {
+            let tmp = tempfile::tempdir().unwrap();
+            let mut one = opts.clone();
+            one.qsos = 1;
+            run_copy(
+                &one,
+                &mut FakeSink::new(8000),
+                &mut ScriptedTerminal::new(perfect_keys(&one, 0)),
+                &mut Store::open(Some(tmp.path().to_path_buf())),
+            )
+            .unwrap();
+            std::fs::read_to_string(tmp.path().join("stats.json")).unwrap()
+        };
+        let tmp = tempfile::tempdir().unwrap();
+        let mut sink = StatsWatcher {
+            inner: FakeSink::new(8000),
+            dir: tmp.path().to_path_buf(),
+            seen: Vec::new(),
+        };
+        let mut term = ScriptedTerminal::new(keys);
+        let mut store = Store::open(Some(tmp.path().to_path_buf()));
+        run_copy(&opts, &mut sink, &mut term, &mut store).unwrap();
+        assert_eq!(
+            sink.seen[0], None,
+            "nothing saved before the first QSO ends"
+        );
+        let first = sink
+            .seen
+            .iter()
+            .flatten()
+            .next()
+            .expect("stats saved while QSO 2 plays");
+        assert_eq!(first, &after_one);
+    }
+
+    #[test]
+    fn a_speaker_too_slow_for_copy_practice_is_refused_by_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let opts = options(Kind::RagChew, 1, 7);
+        let mut sink = FakeSink::new(4000);
+        let mut term = ScriptedTerminal::new(perfect_keys(&opts, 0));
+        let mut store = Store::open(Some(tmp.path().to_path_buf()));
+        let err = run_copy(&opts, &mut sink, &mut term, &mut store).unwrap_err();
+        let text = err.to_string();
+        assert!(matches!(err, CwError::Audio(_)), "{text}");
+        assert!(text.contains("Test speaker"), "{text}");
+        assert!(
+            text.contains("4000 Hz") && text.contains("8000 Hz"),
+            "{text}"
+        );
+        // Refused before anything happened: nothing played, shown or kept.
+        assert!(sink.played.is_empty());
+        assert!(term.text().is_empty());
+        assert!(store.read_history().is_empty());
     }
 
     #[test]
@@ -1215,10 +812,86 @@ pub mod tests {
         assert_eq!(sa.played, sb.played);
     }
 
+    /// A band whose static crashes are far too loud: every over clips.
+    fn clipping_band() -> cat_morse::scenario::BandConditions {
+        use cat_morse::scenario::{BandConditions, QrnOdds};
+        BandConditions {
+            qrn: Some(QrnOdds {
+                chance: 1.0,
+                crashes_per_sec: (4.0, 4.0),
+                level_db: (20.0, 20.0),
+                decay_ms: (50, 70),
+            }),
+            ..BandConditions::clean()
+        }
+    }
+
+    /// Each play the speaker got, split at its clears.
+    fn plays(sink: &FakeSink) -> Vec<Vec<f32>> {
+        let mut out = Vec::new();
+        let mut from = 0;
+        let mut marks = sink.clear_marks.clone();
+        marks.push(sink.played.len());
+        for to in marks {
+            if to > from {
+                out.push(sink.played[from..to].to_vec());
+            }
+            from = to;
+        }
+        out
+    }
+
+    fn render(audio: &cw_trainer_core::OverAudio) -> (Vec<f32>, u64) {
+        let mut r = audio.renderer().unwrap();
+        let mut out = vec![0.0; audio.channel().len_samples() + 1];
+        let n = r.fill(&mut out);
+        out.truncate(n);
+        (out, r.clipped())
+    }
+
+    #[test]
+    fn a_clipped_over_turns_the_next_one_down_through_the_cli() {
+        use cw_trainer_core::{OverOutcome, Step};
+
+        let mut opts = options(Kind::RagChew, 1, 7);
+        opts.band = Some(clipping_band());
+        let (_, sink, _) = run(&opts, perfect_keys(&opts, 0));
+        let played = plays(&sink);
+
+        // The library, told what the renderer reported, and told nothing.
+        let second = |report_clipping: bool| {
+            let mut s = CopySession::new(opts.clone(), 8000).unwrap();
+            let mut n = 0;
+            while let Some(step) = s.next_step().unwrap() {
+                if let Step::ThemOver(o) = step {
+                    let (pcm, clipped) = render(&o.audio);
+                    if n == 1 {
+                        return (pcm, o.audio.channel().gain);
+                    }
+                    assert!(clipped > 0, "the first over must clip");
+                    s.submit(OverOutcome::Copied {
+                        text: o.expected.join(" "),
+                        agn: 0,
+                        audio_gaps: 0,
+                        clipped: if report_clipping { clipped } else { 0 },
+                    })
+                    .unwrap();
+                    n += 1;
+                }
+            }
+            unreachable!("a second them over");
+        };
+        let (turned_down, gain) = second(true);
+        let (full, _) = second(false);
+        assert_eq!(gain, 0.8);
+        assert_ne!(turned_down, full);
+        assert_eq!(played[1], turned_down, "the CLI reports the clipping");
+    }
+
     #[test]
     fn adaptation_is_announced_and_carried_into_the_record() {
         let mut opts = options(Kind::RagChew, 1, 7);
-        opts.adapt = true;
+        opts.adapt = Some(crate::AdaptRule::default());
         let (r, _, out) = run(&opts, perfect_keys(&opts, 0));
         let scored = r.overs.iter().filter(|o| !o.skipped).count();
         assert!(

@@ -1,0 +1,40 @@
+cw-trainer copy: pota contacts, intermediate, seed 12, 600 Hz, 20 wpm
+Playing to: Test speaker
+Type what you hear while it plays; Enter submits.
+Ctrl-R/F5 AGN (replay)   Ctrl-N/F6 skip   Esc/Ctrl-C quit
+Last session 2026-11-07T12:00:00Z: 3 overs, CER 2%, ended at 20 wpm
+
+--- QSO 1/1: pota ---
+
+  [QSO 1 over 1, 19 wpm]
+  copy> CQ POTA CQ POTA DE W5KFR W5KFR K
+  sent   CQ POTA CQ POTA DE W5KFR W5KFR K
+  copied CQ POTA CQ POTA DE W5KFR W5KFR K
+  CER 0% (32 sent: 32 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KF0UWV
+
+  [QSO 1 over 3, 19 wpm]
+  copy> E KF0UWV HI UR 5NN 5NN TX TX BE
+  sent   KF0UWV HI UR 5NN 5NN TX TX BK
+  copied KF0UWV HI UR 5NN 5NN TX TX BE
+                                     ^
+  CER 3% (29 sent: 28 ok, 1 wrong, 0 missed, 0 extra)
+  you send> BK TU UR 5NN 5NN CO CO 72 BK
+  you send> PARK?
+
+  [QSO 1 over 6, 19 wpm]
+  copy>   [AGN]
+  copy> US-6394 US-6394
+  sent   US-6394 US-6394
+  copied US-6394 US-6394
+  CER 0% (15 sent: 15 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+
+  [QSO 1 over 7, 19 wpm]
+  copy>   [skipped]
+
+=== Session summary (seed 12) ===
+  overs copied 3, skipped 1, AGN 1
+  CER 1% (76 sent: 75 ok, 1 wrong, 0 missed, 0 extra)
+  speed 20 wpm -> 20 wpm
+  weakest this session: K 80%  5 100%  N 100%  T 100%  U 100%
+  weakest all time:     <KN> 50%  K 95%  W 100%  0 100%  L 100%

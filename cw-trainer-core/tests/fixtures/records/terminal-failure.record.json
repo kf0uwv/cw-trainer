@@ -1,0 +1,269 @@
+{
+  "version": 1,
+  "started": "2026-11-07T12:00:00Z",
+  "seed": 6,
+  "kind": "contest",
+  "level": "intermediate",
+  "call": "KF0UWV",
+  "pitch_hz": 600.0,
+  "audio_out": "Test speaker",
+  "start_speed": {
+    "char_wpm": 20,
+    "effective_wpm": null
+  },
+  "end_speed": {
+    "char_wpm": 20,
+    "effective_wpm": null
+  },
+  "overs": [
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "CQ KY4KOQ TEST"
+      ],
+      "copied": "CQ KY4KOQ TEST",
+      "score": {
+        "expected": 14,
+        "matches": 14,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 20.0,
+      "effective_wpm": 20.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "KF0UWV 5NN 5"
+      ],
+      "copied": "KF0UWV 5NN E",
+      "score": {
+        "expected": 12,
+        "matches": 11,
+        "substitutions": 1,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 20.0,
+      "effective_wpm": 20.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "TU KY4KOQ"
+      ],
+      "copied": "TU KY4KOQ",
+      "score": {
+        "expected": 9,
+        "matches": 9,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 1,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 20.0,
+      "effective_wpm": 20.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "CQ JT2HAD TEST"
+      ],
+      "copied": "",
+      "score": {
+        "expected": 0,
+        "matches": 0,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": true,
+      "audio_gaps": 0,
+      "char_wpm": 19.0,
+      "effective_wpm": 19.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "KF0UWV 5NN 23"
+      ],
+      "copied": "KF0UWV 5NN",
+      "score": {
+        "expected": 13,
+        "matches": 10,
+        "substitutions": 0,
+        "deletions": 3,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 19.0,
+      "effective_wpm": 19.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "TU JT2HAD"
+      ],
+      "copied": "TU JT2HAD QRZ",
+      "score": {
+        "expected": 9,
+        "matches": 9,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 4
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 19.0,
+      "effective_wpm": 19.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "CQ KM3SC TEST"
+      ],
+      "copied": "CQ KM3SC TEST",
+      "score": {
+        "expected": 13,
+        "matches": 13,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 18.0,
+      "effective_wpm": 18.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "KF0UWV 5NN 5"
+      ],
+      "copied": "KF0UWV 5NN E",
+      "score": {
+        "expected": 12,
+        "matches": 11,
+        "substitutions": 1,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 18.0,
+      "effective_wpm": 18.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "TU"
+      ],
+      "copied": "TU",
+      "score": {
+        "expected": 2,
+        "matches": 2,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 1,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 18.0,
+      "effective_wpm": 18.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "CQ TEST LZ2RN LZ2RN"
+      ],
+      "copied": "",
+      "score": {
+        "expected": 0,
+        "matches": 0,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": true,
+      "audio_gaps": 0,
+      "char_wpm": 22.0,
+      "effective_wpm": 22.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "KF0UWV 5NN 20"
+      ],
+      "copied": "KF0UWV 5NN",
+      "score": {
+        "expected": 13,
+        "matches": 10,
+        "substitutions": 0,
+        "deletions": 3,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 22.0,
+      "effective_wpm": 22.0
+    },
+    {
+      "qso": 1,
+      "kind": "contest",
+      "expected": [
+        "TU TEST"
+      ],
+      "copied": "TU TEST QRZ",
+      "score": {
+        "expected": 7,
+        "matches": 7,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 4
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 22.0,
+      "effective_wpm": 22.0
+    }
+  ],
+  "total": {
+    "expected": 104,
+    "matches": 96,
+    "substitutions": 2,
+    "deletions": 6,
+    "insertions": 8
+  },
+  "quit_early": true,
+  "ended_by_error": "terminal: terminal went away"
+}

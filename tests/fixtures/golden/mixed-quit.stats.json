@@ -1,0 +1,422 @@
+{
+  "version": 1,
+  "stats": {
+    "units": [
+      [
+        {
+          "Char": "-"
+        },
+        {
+          "sent": 2,
+          "correct": 2,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "/"
+        },
+        {
+          "sent": 4,
+          "correct": 4,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "0"
+        },
+        {
+          "sent": 4,
+          "correct": 4,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "2"
+        },
+        {
+          "sent": 1,
+          "correct": 1,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "3"
+        },
+        {
+          "sent": 3,
+          "correct": 3,
+          "missed": 0,
+          "inserted_near": 4,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "4"
+        },
+        {
+          "sent": 1,
+          "correct": 1,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "5"
+        },
+        {
+          "sent": 3,
+          "correct": 3,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "6"
+        },
+        {
+          "sent": 1,
+          "correct": 1,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "9"
+        },
+        {
+          "sent": 4,
+          "correct": 4,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "?"
+        },
+        {
+          "sent": 1,
+          "correct": 0,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": [
+            [
+              {
+                "Char": "E"
+              },
+              1
+            ]
+          ]
+        }
+      ],
+      [
+        {
+          "Char": "A"
+        },
+        {
+          "sent": 2,
+          "correct": 2,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "B"
+        },
+        {
+          "sent": 8,
+          "correct": 8,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "C"
+        },
+        {
+          "sent": 3,
+          "correct": 3,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "D"
+        },
+        {
+          "sent": 4,
+          "correct": 4,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "E"
+        },
+        {
+          "sent": 5,
+          "correct": 4,
+          "missed": 1,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "F"
+        },
+        {
+          "sent": 5,
+          "correct": 5,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "G"
+        },
+        {
+          "sent": 1,
+          "correct": 1,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "H"
+        },
+        {
+          "sent": 4,
+          "correct": 4,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "I"
+        },
+        {
+          "sent": 1,
+          "correct": 1,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "J"
+        },
+        {
+          "sent": 3,
+          "correct": 3,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "K"
+        },
+        {
+          "sent": 7,
+          "correct": 7,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "N"
+        },
+        {
+          "sent": 6,
+          "correct": 6,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "O"
+        },
+        {
+          "sent": 2,
+          "correct": 2,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "P"
+        },
+        {
+          "sent": 2,
+          "correct": 2,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "Q"
+        },
+        {
+          "sent": 4,
+          "correct": 4,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "R"
+        },
+        {
+          "sent": 3,
+          "correct": 3,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "S"
+        },
+        {
+          "sent": 3,
+          "correct": 2,
+          "missed": 1,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "T"
+        },
+        {
+          "sent": 4,
+          "correct": 3,
+          "missed": 1,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "U"
+        },
+        {
+          "sent": 4,
+          "correct": 4,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "V"
+        },
+        {
+          "sent": 2,
+          "correct": 2,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "W"
+        },
+        {
+          "sent": 2,
+          "correct": 2,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "X"
+        },
+        {
+          "sent": 2,
+          "correct": 2,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Char": "Z"
+        },
+        {
+          "sent": 1,
+          "correct": 1,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ],
+      [
+        {
+          "Prosign": "Bt"
+        },
+        {
+          "sent": 1,
+          "correct": 1,
+          "missed": 0,
+          "inserted_near": 0,
+          "confused_as": []
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,97 @@
+cw-trainer copy: contest contacts, intermediate, seed 6, 600 Hz, 20 wpm
+Playing to: Test speaker
+Type what you hear while it plays; Enter submits.
+Ctrl-R/F5 AGN (replay)   Ctrl-N/F6 skip   Esc/Ctrl-C quit
+
+--- QSO 1/2: contest ---
+
+  [QSO 1 over 1, 20 wpm]
+  copy> CQ KY4KOQ TEST
+  sent   CQ KY4KOQ TEST
+  copied CQ KY4KOQ TEST
+  CER 0% (14 sent: 14 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KF0UWV
+
+  [QSO 1 over 3, 20 wpm]
+  copy> E KF0UWV 5NN E
+  sent   KF0UWV 5NN 5
+  copied KF0UWV 5NN E
+                    ^
+  CER 8% (12 sent: 11 ok, 1 wrong, 0 missed, 0 extra)
+  you send> TU 5NN 4
+
+  [QSO 1 over 5, 20 wpm]
+  copy>   [AGN]
+  copy> TU KY4KOQ
+  sent   TU KY4KOQ
+  copied TU KY4KOQ
+  CER 0% (9 sent: 9 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+
+  [QSO 1 over 6, 19 wpm]
+  copy>   [skipped]
+  you send> KF0UWV
+
+  [QSO 1 over 8, 19 wpm]
+  copy> KF0UWV 5NN
+  sent   KF0UWV 5NN 23
+  copied KF0UWV 5NN___
+                   ^^^
+  CER 23% (13 sent: 10 ok, 0 wrong, 3 missed, 0 extra)
+  you send> TU 5NN 4
+
+  [QSO 1 over 10, 19 wpm]
+  copy> TU JT2HAD QRZ
+  sent   TU JT2HAD____
+  copied TU JT2HAD QRZ
+                  ^^^^
+  CER 44% (9 sent: 9 ok, 0 wrong, 0 missed, 4 extra)
+
+  [QSO 1 over 11, 18 wpm]
+  copy> CQ KM3SC TEST
+  sent   CQ KM3SC TEST
+  copied CQ KM3SC TEST
+  CER 0% (13 sent: 13 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KF0UWV
+
+  [QSO 1 over 13, 18 wpm]
+  copy> E KF0UWV 5NN E
+  sent   KF0UWV 5NN 5
+  copied KF0UWV 5NN E
+                    ^
+  CER 8% (12 sent: 11 ok, 1 wrong, 0 missed, 0 extra)
+  you send> TU 5NN 4
+
+  [QSO 1 over 15, 18 wpm]
+  copy>   [AGN]
+  copy> TU
+  sent   TU
+  copied TU
+  CER 0% (2 sent: 2 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+
+  [QSO 1 over 16, 22 wpm]
+  copy>   [skipped]
+  you send> KF0UWV
+
+  [QSO 1 over 18, 22 wpm]
+  copy> KF0UWV 5NN
+  sent   KF0UWV 5NN 20
+  copied KF0UWV 5NN___
+                   ^^^
+  CER 23% (13 sent: 10 ok, 0 wrong, 3 missed, 0 extra)
+  you send> TU 5NN 4
+
+  [QSO 1 over 20, 22 wpm]
+  copy> TU TEST QRZ
+  sent   TU TEST____
+  copied TU TEST QRZ
+                ^^^^
+  CER 57% (7 sent: 7 ok, 0 wrong, 0 missed, 4 extra)
+
+  [QSO 1 over 21, 19 wpm]
+  copy> TEST WF6/V4
+=== Session summary (seed 6) ===
+  overs copied 10, skipped 2, AGN 2, quit early
+  CER 15% (104 sent: 96 ok, 2 wrong, 6 missed, 8 extra)
+  speed 20 wpm -> 20 wpm
+  weakest this session: 2 33%  3 50%  5 67%  0 80%  T 100%
+  weakest all time:     2 33%  3 50%  5 67%  0 80%  T 100%

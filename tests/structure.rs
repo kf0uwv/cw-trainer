@@ -24,6 +24,11 @@
 //!    only reads `remote.rs` needs are the handshake's capabilities and a
 //!    state read, neither of which takes a `Command`.
 //! 3. `Cargo.toml` depends on no radio, transport, framework or tokio crate.
+//! 4. The session library, `cw-trainer-core/`, is held to rules 1–3 with
+//!    no exception at all (its own `tests/structure.rs` adds stricter ones,
+//!    and must keep every word listed here).
+//! 5. Every Rust file in both crates, tests included, starts with the
+//!    Apache-2.0 header.
 //!
 //! Comments count: a forbidden word in a comment fails too. Rephrase the
 //! comment; do not weaken the list.
@@ -192,22 +197,193 @@ fn nothing_names_a_radio_write_or_a_transport() {
 
 #[test]
 fn no_radio_transport_or_tokio_dependency() {
+    for manifest in [root().join("Cargo.toml"), core_root().join("Cargo.toml")] {
+        let text = fs::read_to_string(&manifest).unwrap();
+        let mut found = Vec::new();
+        for line in text.lines() {
+            let line = line.trim();
+            if line.starts_with('#') {
+                continue;
+            }
+            let Some((key, _)) = line.split_once('=') else {
+                continue;
+            };
+            let key = key.trim().trim_matches('"');
+            if FORBIDDEN_DEPS.contains(&key) {
+                found.push(key.to_string());
+            }
+        }
+        assert!(
+            found.is_empty(),
+            "forbidden dependencies in {}: {found:?}",
+            manifest.display()
+        );
+    }
+}
+
+fn core_root() -> PathBuf {
+    root().join("cw-trainer-core")
+}
+
+fn core_src_files() -> Vec<(String, String)> {
+    let files = sources(&core_root().join("src"));
+    assert!(
+        files.iter().any(|f| f.0 == "cw-trainer-core/src/lib.rs"),
+        "cw-trainer-core/src/lib.rs not scanned: {:?}",
+        files.iter().map(|f| &f.0).collect::<Vec<_>>()
+    );
+    files
+}
+
+#[test]
+fn the_core_reaches_no_server_and_names_no_radio_write() {
+    // No exception for the library: it never reaches a server at all.
+    let files = core_src_files();
+    let mut v = violations(&files, ONLY_IN_REMOTE);
+    v.extend(violations(&files, NOWHERE));
+    assert!(v.is_empty(), "the core must name none of these: {v:?}");
+}
+
+#[test]
+fn the_cores_own_denylist_keeps_every_word_listed_here() {
+    // The core's structure test is stricter, never looser: each word
+    // above appears there too, as a string literal.
+    let core_test = fs::read_to_string(core_root().join("tests/structure.rs")).unwrap();
+    let missing: Vec<_> = ONLY_IN_REMOTE
+        .iter()
+        .chain(NOWHERE)
+        .filter(|w| !core_test.contains(&format!("{w:?}")))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "cw-trainer-core/tests/structure.rs lacks: {missing:?}"
+    );
+}
+
+/// The first lines of every Rust file in this repository.
+const HEADER: &str = "\
+// Copyright 2026 Matt Franklin
+//
+// Licensed under the Apache License, Version 2.0 (the \"License\");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an \"AS IS\" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+";
+
+#[test]
+fn every_rust_file_starts_with_the_apache_header() {
+    let mut files = Vec::new();
+    for dir in [
+        "src",
+        "tests",
+        "cw-trainer-core/src",
+        "cw-trainer-core/tests",
+    ] {
+        files.extend(sources(&root().join(dir)));
+    }
+    for extra in ["build.rs", "cw-trainer-core/build.rs"] {
+        if let Ok(text) = fs::read_to_string(root().join(extra)) {
+            files.push((extra.to_string(), text));
+        }
+    }
+    for must in [
+        "src/lib.rs",
+        "tests/structure.rs",
+        "cw-trainer-core/src/lib.rs",
+        "cw-trainer-core/tests/structure.rs",
+    ] {
+        assert!(files.iter().any(|f| f.0 == must), "{must} not scanned");
+    }
+    let bad: Vec<_> = files
+        .iter()
+        .filter(|(_, text)| !text.replace("\r\n", "\n").starts_with(HEADER))
+        .map(|(name, _)| name)
+        .collect();
+    assert!(bad.is_empty(), "missing the Apache-2.0 header: {bad:?}");
+}
+
+/// The one radio-cat-rs revision every crate here builds against.
+const RADIO_CAT_RS: &str = "https://github.com/kf0uwv/radio-cat-rs";
+
+#[test]
+fn radio_cat_rs_is_pinned_once_by_rev_with_no_patch() {
+    // Pinned by rev until radio-cat-rs tags a release with cat-morse, then
+    // by tag: either way in one place, `[workspace.dependencies]`, with no
+    // `[patch]` and no sibling checkout, so a git consumer resolves the
+    // same sources this repository tests against.
     let manifest = fs::read_to_string(root().join("Cargo.toml")).unwrap();
-    let mut found = Vec::new();
+    let mut section = "";
+    let mut pins = Vec::new();
     for line in manifest.lines() {
         let line = line.trim();
         if line.starts_with('#') {
             continue;
         }
-        let Some((key, _)) = line.split_once('=') else {
+        if line.starts_with('[') {
+            section = line;
+            assert!(!line.starts_with("[patch"), "no [patch] section: {line}");
             continue;
-        };
-        let key = key.trim().trim_matches('"');
-        if FORBIDDEN_DEPS.contains(&key) {
-            found.push(key.to_string());
+        }
+        assert!(
+            !line.contains("../radio-cat-rs"),
+            "no path to a sibling checkout: {line}"
+        );
+        if line.contains(RADIO_CAT_RS) {
+            assert_eq!(
+                section, "[workspace.dependencies]",
+                "radio-cat-rs is named only in [workspace.dependencies]: {line}"
+            );
+            let rev = line
+                .split("rev = \"")
+                .nth(1)
+                .and_then(|r| r.split('"').next())
+                .unwrap_or_else(|| panic!("pinned by rev: {line}"));
+            let name = line.split('=').next().unwrap().trim();
+            pins.push((name.to_string(), rev.to_string()));
         }
     }
-    assert!(found.is_empty(), "forbidden dependencies: {found:?}");
+    let mut names: Vec<&str> = pins.iter().map(|p| p.0.as_str()).collect();
+    names.sort();
+    assert_eq!(
+        names,
+        ["cat-morse", "cat-native", "cat-signal", "cat-signal-audio"]
+    );
+    assert!(
+        pins.windows(2).all(|w| w[0].1 == w[1].1),
+        "one revision for every crate: {pins:?}"
+    );
+    assert_eq!(pins[0].1.len(), 40, "a full commit hash: {pins:?}");
+}
+
+#[test]
+fn the_library_readme_names_the_pinned_cat_morse_exactly() {
+    // A consumer that also depends on cat-morse must use the identical
+    // source (a rev and a tag are different sources to Cargo), so the
+    // README's spec must be the workspace's pin, character for character.
+    let manifest = fs::read_to_string(root().join("Cargo.toml")).unwrap();
+    let pin = manifest
+        .lines()
+        .find(|l| l.starts_with("cat-morse = { git"))
+        .expect("cat-morse pinned in [workspace.dependencies]");
+    let rev = pin
+        .split("rev = \"")
+        .nth(1)
+        .unwrap()
+        .split('"')
+        .next()
+        .unwrap();
+    let readme = fs::read_to_string(core_root().join("README.md")).unwrap();
+    let spec = format!(
+        "cat-morse = {{ git = \"{RADIO_CAT_RS}\", rev = \"{rev}\", features = [\"serde\"] }}"
+    );
+    assert!(readme.contains(&spec), "README lacks: {spec}");
 }
 
 #[test]

@@ -21,10 +21,7 @@
 //! synthesized at [`AudioSink::sample_rate_hz`] — the rate the device
 //! actually accepted.
 
-use std::time::Duration;
-
-use cat_morse::scenario::{band_channel, Difficulty, Transmission};
-use cat_morse::{timing, Channel, Script, Signal};
+pub use cw_trainer_core::over::{over_channel, LEAD, TAIL};
 
 /// A speaker.
 pub trait AudioSink {
@@ -44,42 +41,6 @@ pub trait AudioSink {
     }
 }
 
-/// Silence before the first key-down, so the over does not start mid-word.
-pub const LEAD: Duration = Duration::from_millis(300);
-/// Band noise after the last key-up.
-pub const TAIL: Duration = Duration::from_millis(500);
-
-/// Build the band for one over: each line keyed with its station's speed
-/// and fist at the operator's pitch plus that station's offset, starting
-/// at `starts` (relative to the over), inside the level's band.
-pub fn over_channel(
-    script: &Script,
-    lines: &[&Transmission],
-    starts: &[Duration],
-    difficulty: &Difficulty,
-    sample_rate: u32,
-    pitch_hz: f32,
-    seed: u64,
-) -> Result<Channel, String> {
-    let mut signals = Vec::with_capacity(lines.len());
-    for (line, start) in lines.iter().zip(starts) {
-        let sig = script
-            .signal_for(line)
-            .ok_or_else(|| "a line with no station".to_string())?;
-        let keying = timing::key_text(&line.text, sig.speed, &sig.fist, sig.fist_seed)
-            .map_err(|e| format!("cannot key {:?}: {e}", line.text))?;
-        signals.push(
-            Signal::new(keying, pitch_hz + sig.pitch_offset_hz)
-                .at_level(sig.strength_db)
-                .starting_at(LEAD + *start),
-        );
-    }
-    let (mut channel, _report) = band_channel(difficulty, signals, sample_rate, pitch_hz, seed)
-        .map_err(|e| format!("cannot build the band: {e}"))?;
-    channel.padding = TAIL;
-    Ok(channel)
-}
-
 #[cfg(test)]
 pub mod tests {
     use super::*;
@@ -93,6 +54,8 @@ pub mod tests {
         pub rate: u32,
         pub played: Vec<f32>,
         pub clears: u32,
+        /// `played.len()` at each clear: where each play of an over ends.
+        pub clear_marks: Vec<usize>,
         pub max_write: usize,
         pub fail_after: Option<usize>,
         pub underrun_seq: std::cell::RefCell<std::collections::VecDeque<u64>>,
@@ -105,6 +68,7 @@ pub mod tests {
                 rate,
                 played: Vec::new(),
                 clears: 0,
+                clear_marks: Vec::new(),
                 max_write: usize::MAX,
                 fail_after: None,
                 underrun_seq: Default::default(),
@@ -132,6 +96,7 @@ pub mod tests {
         }
         fn clear(&mut self) {
             self.clears += 1;
+            self.clear_marks.push(self.played.len());
         }
         fn underruns(&self) -> u64 {
             if let Some(v) = self.underrun_seq.borrow_mut().pop_front() {
@@ -139,33 +104,5 @@ pub mod tests {
             }
             self.last_underruns.get()
         }
-    }
-
-    #[test]
-    fn an_over_renders_every_line_inside_the_levels_band() {
-        use cat_morse::scenario::Party;
-        use cat_morse::{generate, Callsign, ScenarioConfig, ScenarioKind};
-
-        let d = Difficulty::advanced();
-        let script = generate(&ScenarioConfig {
-            kind: ScenarioKind::RagChew,
-            my_call: Callsign::parse("KF0UWV").unwrap(),
-            difficulty: d.clone(),
-            seed: 3,
-        })
-        .unwrap();
-        let line = script
-            .transmissions
-            .iter()
-            .find(|t| matches!(t.from, Party::Them(_)))
-            .unwrap();
-        let ch = over_channel(&script, &[line], &[Duration::ZERO], &d, 8000, 600.0, 9).unwrap();
-        assert_eq!(ch.sample_rate, 8000);
-        assert!(!ch.signals.is_empty());
-        assert_eq!(ch.signals[0].start, LEAD);
-        assert_eq!(ch.padding, TAIL);
-        // Same seed, same band.
-        let again = over_channel(&script, &[line], &[Duration::ZERO], &d, 8000, 600.0, 9).unwrap();
-        assert_eq!(ch.render().unwrap(), again.render().unwrap());
     }
 }

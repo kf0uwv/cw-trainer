@@ -9,36 +9,20 @@ on:
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
-  # cw-trainer builds against a sibling checkout of radio-cat-rs: Cargo.toml
-  # has a `path = "../radio-cat-rs/cat-morse"` dependency and a [patch]
-  # pointing every radio-cat-rs crate there (TEMPORARY, as in kf0uwv/ts570d).
-  # So both jobs check the two repositories out side by side and run from
-  # cw-trainer/. This is the one place that says which radio-cat-rs to
-  # build against: main (it carries cat-morse and ADR 0023's CW wire types /
-  # Connection::connect_timeout, merged via radio-cat-rs PR #19). Pin a tag
-  # instead once radio-cat-rs releases cat-morse and the [patch] goes away.
-  RADIO_CAT_RS_REF: main
+
+# radio-cat-rs comes from Cargo.toml: every crate pinned once, by rev, in
+# [workspace.dependencies] (by tag once radio-cat-rs tags a release with
+# cat-morse). Every job builds the whole workspace: the CLI and the
+# session library, cw-trainer-core.
 
 jobs:
   test:
     name: Linux
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: cw-trainer
 
     steps:
-      - name: Checkout cw-trainer
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          path: cw-trainer
-
-      - name: Checkout radio-cat-rs (sibling)
-        uses: actions/checkout@v4
-        with:
-          repository: kf0uwv/radio-cat-rs
-          ref: ${{ env.RADIO_CAT_RS_REF }}
-          path: radio-cat-rs
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -53,8 +37,8 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-            cw-trainer/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('cw-trainer/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
@@ -66,36 +50,43 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
-      - name: Tests (lib, bin, tests/structure.rs)
+      - name: Tests (both crates, golden fixtures, structure guards)
         # No sound card is opened by any test: they use doubles.
-        run: cargo test --all-targets
+        run: cargo test --workspace --all-targets
 
       - name: Tests with audio-device
-        run: cargo test --all-targets --features audio-device
+        run: cargo test --workspace --all-targets --features audio-device
+
+      - name: Doctests (not in --all-targets)
+        run: cargo test --workspace --doc
+
+      - name: cw-trainer-core dependency graph
+        # The library's whole normal-dependency graph, on every target, is
+        # exactly this: cat-morse, serde and thiserror, and what those need.
+        run: |
+          actual=$(cargo tree -p cw-trainer-core -e normal --target all \
+            --prefix none --format '{p}' | sed 's/ v[0-9].*//' | sort -u)
+          expected=$(printf '%s\n' cat-morse cw-trainer-core proc-macro2 quote \
+            serde serde_core serde_derive syn thiserror thiserror-impl \
+            unicode-ident | sort -u)
+          if [ "$actual" != "$expected" ]; then
+            echo "cw-trainer-core's dependency graph changed:"
+            diff <(echo "$expected") <(echo "$actual")
+            exit 1
+          fi
 
   windows:
     name: Windows (MSVC)
     runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: cw-trainer
 
     # Authoritative Windows verification (radio-cat-rs ADR 0012):
     # x86_64-pc-windows-msvc is the host target here, so no --target flag.
+    # The golden record and transcript fixtures must match exactly here too.
     steps:
-      - name: Checkout cw-trainer
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          path: cw-trainer
-
-      - name: Checkout radio-cat-rs (sibling)
-        uses: actions/checkout@v4
-        with:
-          repository: kf0uwv/radio-cat-rs
-          ref: ${{ env.RADIO_CAT_RS_REF }}
-          path: radio-cat-rs
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -109,19 +100,65 @@ jobs:
             ~/.cargo/registry/index
             ~/.cargo/registry/cache
             ~/.cargo/git/db
-            cw-trainer/target
-          key: ${{ runner.os }}-cargo-windows-msvc-${{ hashFiles('cw-trainer/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-cargo-windows-msvc-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-windows-msvc-
 
       - name: cargo check
-        run: cargo check --all-targets
+        run: cargo check --workspace --all-targets
 
       - name: cargo test
-        run: cargo test --all-targets
+        run: cargo test --workspace --all-targets
 
       - name: cargo check with audio-device (WASAPI speaker)
-        run: cargo check --all-targets --features audio-device
+        run: cargo check --workspace --all-targets --features audio-device
 
       - name: cargo test with audio-device
-        run: cargo test --all-targets --features audio-device
+        run: cargo test --workspace --all-targets --features audio-device
+
+  mobile:
+    name: cw-trainer-core (${{ matrix.target }})
+    runs-on: ubuntu-latest
+
+    # The library is checked (not linked) for each target: no SDK or NDK
+    # is needed, because nothing in its graph has a C build or a platform
+    # API. A failure here is a portability bug to fix in this repository or
+    # upstream in cat-morse.
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-apple-ios
+          - aarch64-apple-ios-sim
+          - aarch64-apple-darwin
+          - aarch64-linux-android
+          - x86_64-linux-android
+          - armv7-linux-androideabi
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.93"
+
+      - name: Add the target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            target
+          key: ${{ runner.os }}-cargo-${{ matrix.target }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-${{ matrix.target }}-
+
+      - name: cargo check
+        run: cargo check -p cw-trainer-core --lib --target ${{ matrix.target }}

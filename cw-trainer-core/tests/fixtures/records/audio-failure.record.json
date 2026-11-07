@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "started": "2026-11-07T12:00:00Z",
+  "seed": 7,
+  "kind": "ragchew",
+  "level": "intermediate",
+  "call": "KF0UWV",
+  "pitch_hz": 600.0,
+  "audio_out": "Test speaker",
+  "start_speed": {
+    "char_wpm": 20,
+    "effective_wpm": null
+  },
+  "end_speed": {
+    "char_wpm": 20,
+    "effective_wpm": null
+  },
+  "overs": [
+    {
+      "qso": 1,
+      "kind": "ragchew",
+      "expected": [
+        "CQ CQ CQ DE KW0LJ KW0LJ KW0LJ K"
+      ],
+      "copied": "CQ CQ CQ DE KW0LJ KW0LJ KW0LJ K",
+      "score": {
+        "expected": 31,
+        "matches": 31,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 20.0,
+      "effective_wpm": 20.0
+    },
+    {
+      "qso": 1,
+      "kind": "ragchew",
+      "expected": [
+        "KF0UWV DE KW0LJ GA TNX FER CALL <BT> UR RST 579 579 <BT> NAME BILL BILL <BT> QTH LAWRENCE, KS LAWRENCE, KS <BT> HW CPY? <AR> KF0UWV DE KW0LJ <KN>"
+      ],
+      "copied": "KF0UWV DE KW0LJ GA TNX FER CALL <BT> UR RST 579 579 <BT> NAME BILL BILL <BT> QTH LAWRENCE, KS LAWRENCE, KS <BT> HW CPY? <AR> KF0UWV DE KW0LJ <KNE",
+      "score": {
+        "expected": 127,
+        "matches": 126,
+        "substitutions": 1,
+        "deletions": 0,
+        "insertions": 3
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 20.0,
+      "effective_wpm": 20.0
+    }
+  ],
+  "total": {
+    "expected": 158,
+    "matches": 157,
+    "substitutions": 1,
+    "deletions": 0,
+    "insertions": 3
+  },
+  "quit_early": true,
+  "ended_by_error": "audio: device unplugged"
+}

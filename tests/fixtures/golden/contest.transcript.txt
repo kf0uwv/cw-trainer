@@ -1,0 +1,248 @@
+cw-trainer copy: contest contacts, advanced, seed 5, 600 Hz, 20 wpm
+Playing to: Test speaker
+Type what you hear while it plays; Enter submits.
+Ctrl-R/F5 AGN (replay)   Ctrl-N/F6 skip   Esc/Ctrl-C quit
+
+--- QSO 1/2: contest ---
+
+  [QSO 1 over 1, 19 wpm]
+  copy> CQ TEST WY7BBR WY7BBR
+  sent   CQ TEST WY7BBR WY7BBR
+  copied CQ TEST WY7BBR WY7BBR
+  CER 0% (21 sent: 21 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KF0UWV
+
+  [QSO 1 over 3, 19 wpm]
+  copy> E KF0UWV 5NN 12NE
+  sent   KF0UWV 5NN 12N6
+  copied KF0UWV 5NN 12NE
+                       ^
+  CER 7% (15 sent: 14 ok, 1 wrong, 0 missed, 0 extra)
+  you send> TU 5NN 123
+
+  [QSO 1 over 5, 19 wpm]
+  copy>   [AGN]
+  copy> TU WY7BBR
+  sent   TU WY7BBR
+  copied TU WY7BBR
+  CER 0% (9 sent: 9 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+
+  [QSO 1 over 6, 16 wpm]
+  copy>   [skipped]
+  you send> KF0UWV
+
+  [QSO 1 over 8, 16 wpm]
+  copy> KF0UWV 5NN 
+  sent   KF0UWV 5NN N54
+  copied KF0UWV 5_N_N__
+                 ^ ^ ^^
+  CER 29% (14 sent: 10 ok, 0 wrong, 4 missed, 0 extra)
+  you send> TU 5NN 124
+
+  [QSO 1 over 10, 16 wpm]
+  copy> TU AF5ZX QRZ
+  sent   TU AF5ZX____
+  copied TU AF5ZX QRZ
+                 ^^^^
+  CER 50% (8 sent: 8 ok, 0 wrong, 0 missed, 4 extra)
+
+  [QSO 1 over 11, 18 wpm]
+  copy> CQ N4BRU TEST
+  sent   CQ N4BRU TEST
+  copied CQ N4BRU TEST
+  CER 0% (13 sent: 13 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KF0UWV
+
+  [QSO 1 over 13, 18 wpm]
+  copy> E KF0UWV 5NN 3TE
+  sent   KF0UWV 5NN 3T6
+  copied KF0UWV 5NN 3TE
+                      ^
+  CER 7% (14 sent: 13 ok, 1 wrong, 0 missed, 0 extra)
+  you send> AGN?
+
+  [QSO 1 over 15, 18 wpm]
+  copy>   [AGN]
+  copy> 5NN 3T6 3T6
+  sent   5NN 3T6 3T6
+  copied 5NN 3T6 3T6
+  CER 0% (11 sent: 11 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+  you send> TU 5NN 125
+
+  [QSO 1 over 17, 18 wpm]
+  copy>   [skipped]
+  you send> 125 125
+
+  [QSO 1 over 19, 18 wpm]
+  copy> TU N4
+  sent   TU N4BRU
+  copied TU N4___
+              ^^^
+  CER 38% (8 sent: 5 ok, 0 wrong, 3 missed, 0 extra)
+
+  [QSO 1 over 20, 18 wpm]
+  copy> CQ TEST KY3HMU KY3HMU QRZ
+  sent   CQ TEST KY3HMU KY3HMU____
+  copied CQ TEST KY3HMU KY3HMU QRZ
+                              ^^^^
+  CER 19% (21 sent: 21 ok, 0 wrong, 0 missed, 4 extra)
+  you send> KF0UWV
+
+  [QSO 1 over 22, 18 wpm]
+  copy> KF?
+  sent   KF?
+  copied KF?
+  CER 0% (3 sent: 3 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KF0UWV KF0UWV
+
+  [QSO 1 over 24, 18 wpm]
+  copy> E KF0UWV 5NN 53E
+  sent   KF0UWV 5NN 535
+  copied KF0UWV 5NN 53E
+                      ^
+  CER 7% (14 sent: 13 ok, 1 wrong, 0 missed, 0 extra)
+  you send> TU 5NN 126
+
+  [QSO 1 over 26, 18 wpm]
+  copy>   [AGN]
+  copy> TU
+  sent   TU
+  copied TU
+  CER 0% (2 sent: 2 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+
+  [QSO 1 over 27, 20 wpm]
+  copy>   [skipped]
+  you send> KF0UWV
+
+  [QSO 1 over 29, 20 wpm]
+  copy> KF0UWV 5NN
+  sent   KF0UWV 5NN 53
+  copied KF0UWV 5NN___
+                   ^^^
+  CER 23% (13 sent: 10 ok, 0 wrong, 3 missed, 0 extra)
+  you send> AGN?
+
+  [QSO 1 over 31, 20 wpm]
+  copy> 5NN 53 53 QRZ
+  sent   5NN 53 53____
+  copied 5NN 53 53 QRZ
+                  ^^^^
+  CER 44% (9 sent: 9 ok, 0 wrong, 0 missed, 4 extra)
+  you send> TU 5NN 127
+
+  [QSO 1 over 33, 20 wpm]
+  copy> TU
+  sent   TU
+  copied TU
+  CER 0% (2 sent: 2 ok, 0 wrong, 0 missed, 0 extra)
+
+--- QSO 2/2: contest ---
+
+  [QSO 2 over 1, 18 wpm]
+  copy> E CQ HG2KFQ TESE
+  sent   CQ HG2KFQ TEST
+  copied CQ HG2KFQ TESE
+                      ^
+  CER 7% (14 sent: 13 ok, 1 wrong, 0 missed, 0 extra)
+  you send> KF0UWV
+
+  [QSO 2 over 3, 18 wpm]
+  copy>   [AGN]
+  copy> KF?
+  sent   KF?
+  copied KF?
+  CER 0% (3 sent: 3 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+  you send> KF0UWV KF0UWV
+
+  [QSO 2 over 5, 18 wpm]
+  copy>   [skipped]
+  you send> TU 5NN 234
+
+  [QSO 2 over 7, 18 wpm]
+  copy> TU T
+  sent   TU TEST
+  copied TU ___T
+            ^^^
+  CER 43% (7 sent: 4 ok, 0 wrong, 3 missed, 0 extra)
+
+  [QSO 2 over 8, 16 wpm]
+  copy> TEST W4URM QRZ
+  sent   TEST W4URM____
+  copied TEST W4URM QRZ
+                   ^^^^
+  CER 40% (10 sent: 10 ok, 0 wrong, 0 missed, 4 extra)
+  you send> KF0UWV
+
+  [QSO 2 over 10, 16 wpm]
+  copy> KF0UWV 5NN 1T36
+  sent   KF0UWV 5NN 1T36
+  copied KF0UWV 5NN 1T36
+  CER 0% (15 sent: 15 ok, 0 wrong, 0 missed, 0 extra)
+  you send> TU 5NN 235
+
+  [QSO 2 over 12, 16 wpm]
+  copy> E TE
+  sent   TU
+  copied TE
+          ^
+  CER 50% (2 sent: 1 ok, 1 wrong, 0 missed, 0 extra)
+
+  [QSO 2 over 13, 21 wpm]
+  copy>   [AGN]
+  copy> TEST KO6ML
+  sent   TEST KO6ML
+  copied TEST KO6ML
+  CER 0% (10 sent: 10 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+  you send> KF0UWV
+
+  [QSO 2 over 15, 21 wpm]
+  copy>   [skipped]
+  you send> KF0UWV KF0UWV
+
+  [QSO 2 over 17, 21 wpm]
+  copy> KF0UWV 5NN 
+  sent   KF0UWV 5NN 584
+  copied KF0UWV 5NN____
+                   ^^^^
+  CER 29% (14 sent: 10 ok, 0 wrong, 4 missed, 0 extra)
+  you send> TU 5NN 236
+
+  [QSO 2 over 19, 21 wpm]
+  copy> TU KO6ML QRZ
+  sent   TU KO6ML____
+  copied TU KO6ML QRZ
+                 ^^^^
+  CER 50% (8 sent: 8 ok, 0 wrong, 0 missed, 4 extra)
+
+  [QSO 2 over 20, 24 wpm]
+  copy> CQ KS7ZVW/QRP TEST
+  sent   CQ KS7ZVW/QRP TEST
+  copied CQ KS7ZVW/QRP TEST
+  CER 0% (18 sent: 18 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KF0UWV
+
+  [QSO 2 over 22, 24 wpm]
+  copy> E KF0UWV 5NN 54E
+  sent   KF0UWV 5NN 545
+  copied KF0UWV 5NN 54E
+                      ^
+  CER 7% (14 sent: 13 ok, 1 wrong, 0 missed, 0 extra)
+  you send> AGN?
+
+  [QSO 2 over 24, 24 wpm]
+  copy>   [AGN]
+  copy> 5NN 545 545
+  sent   5NN 545 545
+  copied 5NN 545 545
+  CER 0% (11 sent: 11 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+  you send> TU 5NN 237
+
+  [QSO 2 over 26, 24 wpm]
+  copy>   [skipped]
+
+=== Session summary (seed 5) ===
+  overs copied 28, skipped 6, AGN 6
+  CER 14% (303 sent: 280 ok, 6 wrong, 17 missed, 20 extra)
+  speed 20 wpm -> 20 wpm
+  weakest this session: 8 0%  6 71%  4 75%  5 80%  R 86%
+  weakest all time:     8 0%  6 71%  4 75%  5 80%  R 86%

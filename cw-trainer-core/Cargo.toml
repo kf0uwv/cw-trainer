@@ -1,0 +1,25 @@
+[package]
+name = "cw-trainer-core"
+version = "0.1.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+description = "Morse copy-practice sessions without I/O: contacts, overs, scoring, adaptive speed and records"
+
+# Exactly these three, and nothing that reaches a terminal, a file, the
+# network, a clock, a thread or a sound card (tests/structure.rs). The
+# library builds for desktop and mobile targets with no SDK.
+[dependencies]
+# Radio-independent Morse code: scripts, keying, band synthesis, scoring.
+# Re-exported as `cw_trainer_core::cat_morse`, so a consumer uses the very
+# same crate (see the crate docs).
+cat-morse = { workspace = true, features = ["serde"] }
+serde = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = "1.0.117"
