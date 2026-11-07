@@ -266,6 +266,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-trainer-core"
+version = "0.1.0"
+dependencies = [
+ "cat-morse",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "dasp_sample"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

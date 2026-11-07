@@ -1,5 +1,18 @@
 [workspace]
 resolver = "2"
+# The CLI (this package) and the session library it is built on. Both are
+# built, tested and linted by default: the library exactly as an app
+# consumer builds it, with nothing of the CLI's enabled.
+members = ["cw-trainer-core"]
+default-members = [".", "cw-trainer-core"]
+
+[workspace.package]
+edition = "2021"
+authors = ["Matt Franklin <radiombf@gmail.com>"]
+license = "Apache-2.0"
+homepage = "https://github.com/kf0uwv/cw-trainer"
+repository = "https://github.com/kf0uwv/cw-trainer"
+rust-version = "1.75"
 
 # Every radio-cat-rs crate this repository uses, pinned once, all to the
 # same revision so exactly one copy of each is linked. Pinned by rev until
@@ -10,17 +23,19 @@ cat-morse = { git = "https://github.com/kf0uwv/radio-cat-rs", rev = "b821bf47ceb
 cat-native = { git = "https://github.com/kf0uwv/radio-cat-rs", rev = "b821bf47ceb57b8f23e437ca3136cd745235e180" }
 cat-signal = { git = "https://github.com/kf0uwv/radio-cat-rs", rev = "b821bf47ceb57b8f23e437ca3136cd745235e180" }
 cat-signal-audio = { git = "https://github.com/kf0uwv/radio-cat-rs", rev = "b821bf47ceb57b8f23e437ca3136cd745235e180" }
+serde = { version = "1.0.203", features = ["derive"] }
+thiserror = "1.0.61"
 
 [package]
 name = "cw-trainer"
 version = "0.1.0"
-edition = "2021"
-authors = ["Matt Franklin <radiombf@gmail.com>"]
-license = "Apache-2.0"
-homepage = "https://github.com/kf0uwv/cw-trainer"
-repository = "https://github.com/kf0uwv/cw-trainer"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
 description = "Radio-neutral Morse code (CW) trainer for any radio-cat-rs radio"
-rust-version = "1.75"
+rust-version.workspace = true
 
 [lib]
 name = "cw_trainer"
@@ -44,9 +59,9 @@ cat-signal-audio = { workspace = true }
 cat-morse = { workspace = true, features = ["serde"] }
 
 # audio.json, stats and session history.
-serde = { version = "1.0.203", features = ["derive"] }
+serde = { workspace = true }
 serde_json = "1.0.117"
-thiserror = "1.0.61"
+thiserror = { workspace = true }
 # One info line naming the opened audio device, as ts570d logs it.
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }

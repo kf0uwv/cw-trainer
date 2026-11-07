@@ -24,6 +24,11 @@
 //!    only reads `remote.rs` needs are the handshake's capabilities and a
 //!    state read, neither of which takes a `Command`.
 //! 3. `Cargo.toml` depends on no radio, transport, framework or tokio crate.
+//! 4. The session library, `cw-trainer-core/`, is held to rules 1–3 with
+//!    no exception at all (its own `tests/structure.rs` adds stricter ones,
+//!    and must keep every word listed here).
+//! 5. Every Rust file in both crates, tests included, starts with the
+//!    Apache-2.0 header.
 //!
 //! Comments count: a forbidden word in a comment fails too. Rephrase the
 //! comment; do not weaken the list.
@@ -192,22 +197,116 @@ fn nothing_names_a_radio_write_or_a_transport() {
 
 #[test]
 fn no_radio_transport_or_tokio_dependency() {
-    let manifest = fs::read_to_string(root().join("Cargo.toml")).unwrap();
-    let mut found = Vec::new();
-    for line in manifest.lines() {
-        let line = line.trim();
-        if line.starts_with('#') {
-            continue;
+    for manifest in [root().join("Cargo.toml"), core_root().join("Cargo.toml")] {
+        let text = fs::read_to_string(&manifest).unwrap();
+        let mut found = Vec::new();
+        for line in text.lines() {
+            let line = line.trim();
+            if line.starts_with('#') {
+                continue;
+            }
+            let Some((key, _)) = line.split_once('=') else {
+                continue;
+            };
+            let key = key.trim().trim_matches('"');
+            if FORBIDDEN_DEPS.contains(&key) {
+                found.push(key.to_string());
+            }
         }
-        let Some((key, _)) = line.split_once('=') else {
-            continue;
-        };
-        let key = key.trim().trim_matches('"');
-        if FORBIDDEN_DEPS.contains(&key) {
-            found.push(key.to_string());
+        assert!(
+            found.is_empty(),
+            "forbidden dependencies in {}: {found:?}",
+            manifest.display()
+        );
+    }
+}
+
+fn core_root() -> PathBuf {
+    root().join("cw-trainer-core")
+}
+
+fn core_src_files() -> Vec<(String, String)> {
+    let files = sources(&core_root().join("src"));
+    assert!(
+        files.iter().any(|f| f.0 == "cw-trainer-core/src/lib.rs"),
+        "cw-trainer-core/src/lib.rs not scanned: {:?}",
+        files.iter().map(|f| &f.0).collect::<Vec<_>>()
+    );
+    files
+}
+
+#[test]
+fn the_core_reaches_no_server_and_names_no_radio_write() {
+    // No exception for the library: it never reaches a server at all.
+    let files = core_src_files();
+    let mut v = violations(&files, ONLY_IN_REMOTE);
+    v.extend(violations(&files, NOWHERE));
+    assert!(v.is_empty(), "the core must name none of these: {v:?}");
+}
+
+#[test]
+fn the_cores_own_denylist_keeps_every_word_listed_here() {
+    // The core's structure test is stricter, never looser: each word
+    // above appears there too, as a string literal.
+    let core_test = fs::read_to_string(core_root().join("tests/structure.rs")).unwrap();
+    let missing: Vec<_> = ONLY_IN_REMOTE
+        .iter()
+        .chain(NOWHERE)
+        .filter(|w| !core_test.contains(&format!("{w:?}")))
+        .collect();
+    assert!(
+        missing.is_empty(),
+        "cw-trainer-core/tests/structure.rs lacks: {missing:?}"
+    );
+}
+
+/// The first lines of every Rust file in this repository.
+const HEADER: &str = "\
+// Copyright 2026 Matt Franklin
+//
+// Licensed under the Apache License, Version 2.0 (the \"License\");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an \"AS IS\" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+";
+
+#[test]
+fn every_rust_file_starts_with_the_apache_header() {
+    let mut files = Vec::new();
+    for dir in [
+        "src",
+        "tests",
+        "cw-trainer-core/src",
+        "cw-trainer-core/tests",
+    ] {
+        files.extend(sources(&root().join(dir)));
+    }
+    for extra in ["build.rs", "cw-trainer-core/build.rs"] {
+        if let Ok(text) = fs::read_to_string(root().join(extra)) {
+            files.push((extra.to_string(), text));
         }
     }
-    assert!(found.is_empty(), "forbidden dependencies: {found:?}");
+    for must in [
+        "src/lib.rs",
+        "tests/structure.rs",
+        "cw-trainer-core/src/lib.rs",
+        "cw-trainer-core/tests/structure.rs",
+    ] {
+        assert!(files.iter().any(|f| f.0 == must), "{must} not scanned");
+    }
+    let bad: Vec<_> = files
+        .iter()
+        .filter(|(_, text)| !text.replace("\r\n", "\n").starts_with(HEADER))
+        .map(|(name, _)| name)
+        .collect();
+    assert!(bad.is_empty(), "missing the Apache-2.0 header: {bad:?}");
 }
 
 /// The one radio-cat-rs revision every crate here builds against.

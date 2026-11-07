@@ -42,16 +42,24 @@ port). It moved here from `ts570d cw`; `ts570d` no longer carries it.
 - Linux and Windows. **Windows means `x86_64-pc-windows-msvc`** only
   (radio-cat-rs ADR 0012); CI's `windows-latest` job runs `cargo check`
   **and** `cargo test`. Local signal only:
-  `cargo xwin check --target x86_64-pc-windows-msvc --all-targets`
+  `cargo xwin check --target x86_64-pc-windows-msvc --workspace --all-targets`
   (one-time: `cargo install cargo-xwin --locked` and
   `rustup target add x86_64-pc-windows-msvc`).
 
 ## Essential commands
+The repository is a workspace: the CLI at the root and the session
+library in `cw-trainer-core/`; plain `cargo build`/`cargo test` cover both
+(`default-members`).
 - Build: `cargo build` (sound card: `--features audio-device`, needs ALSA
   headers on Linux)
-- Test: `cargo test`
-- Lint: `cargo clippy --all-targets --all-features -- -D warnings`,
-  `cargo fmt --check`
+- Test: `cargo test --workspace` (golden fixtures in `tests/fixtures/`;
+  re-record only for a deliberate behaviour change, `CW_TRAINER_BLESS=1`)
+- Lint: `cargo clippy --workspace --all-targets --all-features -- -D warnings`,
+  `cargo fmt --all --check`
+- Library portability (no SDK needed; `rustup target add` each once):
+  `cargo check -p cw-trainer-core --lib --target <t>` for
+  aarch64-apple-ios, aarch64-apple-ios-sim, aarch64-apple-darwin,
+  aarch64-linux-android, x86_64-linux-android, armv7-linux-androideabi
 
 ## Workflow (MANDATORY)
 - Planning-with-files: each agent keeps `task_plan.md`, `findings.md`,
