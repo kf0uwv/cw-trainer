@@ -26,7 +26,9 @@
 use std::io;
 use std::time::Duration;
 
-use cw_trainer_core::copy::{CopySession, Finished, OverAudio, OverOutcome, Shown, Step};
+use cw_trainer_core::copy::{
+    CopySession, Finished, OverAudio, OverOutcome, Shown, Step, MIN_SAMPLE_RATE_HZ,
+};
 
 use super::audio::AudioSink;
 use super::store::Store;
@@ -219,7 +221,17 @@ pub fn run_copy<S: AudioSink, T: Terminal>(
     term: &mut T,
     store: &mut Store,
 ) -> Result<SessionRecord, CwError> {
-    let mut session = CopySession::new(opts.clone(), sink.sample_rate_hz())?;
+    let mut session = match CopySession::new(opts.clone(), sink.sample_rate_hz()) {
+        Ok(s) => s,
+        // Refused before anything is played, shown or kept.
+        Err(CoreError::SampleRate(hz)) => {
+            return Err(CwError::Audio(format!(
+                "{:?} plays at {hz} Hz; copy practice needs at least {MIN_SAMPLE_RATE_HZ} Hz",
+                opts.audio_out
+            )))
+        }
+        Err(e) => return Err(e.into()),
+    };
     let outcome = drive(&mut session, sink, term, store);
     if outcome.is_err() {
         sink.clear();
@@ -638,6 +650,110 @@ pub mod tests {
         assert_eq!(r.overs[0].audio_gaps, 1);
         let total: u32 = r.overs.iter().map(|o| o.audio_gaps).sum();
         assert_eq!(total, 1, "the end-of-audio tick is not a gap");
+    }
+
+    #[test]
+    fn an_audio_dropout_is_reported_under_the_over_it_hit() {
+        let opts = options(Kind::RagChew, 1, 7);
+        let mut sink = FakeSink::new(8000);
+        sink.underrun_seq.borrow_mut().extend([0, 2, 2]);
+        let mut term = ScriptedTerminal::new(perfect_keys(&opts, 0));
+        let r = run_copy(&opts, &mut sink, &mut term, &mut Store::open(None)).unwrap();
+        assert_eq!(r.overs[0].audio_gaps, 2);
+        let text = term.text();
+        let line = "  (the audio dropped out 2 time(s) during this over)\r\n";
+        assert_eq!(text.matches(line).count(), 1, "{text}");
+        assert!(!text.contains("dropped out 0"), "{text}");
+        // Right after that over's result, before the next over.
+        let at = text.find(line).unwrap();
+        assert!(text[..at].contains("CER"), "{text}");
+        assert!(!text[..at].contains("over 3,"), "{text}");
+    }
+
+    /// A speaker that notes, at each clear, what `stats.json` held.
+    struct StatsWatcher {
+        inner: FakeSink,
+        dir: std::path::PathBuf,
+        seen: Vec<Option<String>>,
+    }
+
+    impl AudioSink for StatsWatcher {
+        fn sample_rate_hz(&self) -> u32 {
+            self.inner.sample_rate_hz()
+        }
+        fn write(&mut self, mono: &[f32]) -> Result<usize, String> {
+            self.inner.write(mono)
+        }
+        fn queued(&self) -> usize {
+            self.inner.queued()
+        }
+        fn clear(&mut self) {
+            self.inner.clear();
+            self.seen
+                .push(std::fs::read_to_string(self.dir.join("stats.json")).ok());
+        }
+    }
+
+    #[test]
+    fn stats_are_saved_after_each_qso_not_only_at_the_end() {
+        let opts = options(Kind::RagChew, 2, 7);
+        let mut keys = perfect_keys(&opts, 0);
+        keys.extend(perfect_keys(&opts, 1));
+        // What one QSO alone leaves in stats.json.
+        let after_one = {
+            let tmp = tempfile::tempdir().unwrap();
+            let mut one = opts.clone();
+            one.qsos = 1;
+            run_copy(
+                &one,
+                &mut FakeSink::new(8000),
+                &mut ScriptedTerminal::new(perfect_keys(&one, 0)),
+                &mut Store::open(Some(tmp.path().to_path_buf())),
+            )
+            .unwrap();
+            std::fs::read_to_string(tmp.path().join("stats.json")).unwrap()
+        };
+        let tmp = tempfile::tempdir().unwrap();
+        let mut sink = StatsWatcher {
+            inner: FakeSink::new(8000),
+            dir: tmp.path().to_path_buf(),
+            seen: Vec::new(),
+        };
+        let mut term = ScriptedTerminal::new(keys);
+        let mut store = Store::open(Some(tmp.path().to_path_buf()));
+        run_copy(&opts, &mut sink, &mut term, &mut store).unwrap();
+        assert_eq!(
+            sink.seen[0], None,
+            "nothing saved before the first QSO ends"
+        );
+        let first = sink
+            .seen
+            .iter()
+            .flatten()
+            .next()
+            .expect("stats saved while QSO 2 plays");
+        assert_eq!(first, &after_one);
+    }
+
+    #[test]
+    fn a_speaker_too_slow_for_copy_practice_is_refused_by_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let opts = options(Kind::RagChew, 1, 7);
+        let mut sink = FakeSink::new(4000);
+        let mut term = ScriptedTerminal::new(perfect_keys(&opts, 0));
+        let mut store = Store::open(Some(tmp.path().to_path_buf()));
+        let err = run_copy(&opts, &mut sink, &mut term, &mut store).unwrap_err();
+        let text = err.to_string();
+        assert!(matches!(err, CwError::Audio(_)), "{text}");
+        assert!(text.contains("Test speaker"), "{text}");
+        assert!(
+            text.contains("4000 Hz") && text.contains("8000 Hz"),
+            "{text}"
+        );
+        // Refused before anything happened: nothing played, shown or kept.
+        assert!(sink.played.is_empty());
+        assert!(term.text().is_empty());
+        assert!(store.read_history().is_empty());
     }
 
     #[test]
