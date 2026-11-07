@@ -79,7 +79,7 @@ pub struct AdaptRule {
     pub raise_cer: f64,
     /// At or above this CER, speed goes down. Greater than `raise_cer`.
     pub lower_cer: f64,
-    /// How much one adaptation moves the speed; at least 1.
+    /// How much one adaptation moves the speed: 1 to `MAX_WPM - MIN_WPM`.
     pub step_wpm: u32,
     /// The slowest character speed, at least [`MIN_WPM`].
     pub min_wpm: u32,
@@ -107,8 +107,12 @@ impl AdaptRule {
         if r.window == 0 {
             return Some("the adaptive window must be at least 1 over".to_string());
         }
-        if r.step_wpm == 0 {
-            return Some("the adaptive step must be at least 1 wpm".to_string());
+        if r.step_wpm == 0 || r.step_wpm > MAX_WPM - MIN_WPM {
+            return Some(format!(
+                "the adaptive step must be 1-{} wpm, got {}",
+                MAX_WPM - MIN_WPM,
+                r.step_wpm
+            ));
         }
         if !(r.raise_cer.is_finite() && r.lower_cer.is_finite()) {
             return Some(format!(
@@ -203,9 +207,9 @@ impl SpeedState {
         let c = &mut self.current;
         let step = rule.step_wpm;
         match c.effective_wpm {
-            Some(e) if e + step >= c.char_wpm => c.effective_wpm = None,
-            Some(e) => c.effective_wpm = Some(e + step),
-            None => c.char_wpm = (c.char_wpm + step).min(rule.max_wpm),
+            Some(e) if e.saturating_add(step) >= c.char_wpm => c.effective_wpm = None,
+            Some(e) => c.effective_wpm = Some(e.saturating_add(step)),
+            None => c.char_wpm = c.char_wpm.saturating_add(step).min(rule.max_wpm),
         }
     }
 
@@ -245,6 +249,45 @@ mod tests {
     }
 
     // --- adaptive speed ---------------------------------------------------
+
+    #[test]
+    fn a_step_wider_than_the_whole_speed_range_is_refused() {
+        let ok = AdaptRule {
+            step_wpm: MAX_WPM - MIN_WPM,
+            ..AdaptRule::default()
+        };
+        assert_eq!(ok.problem(), None);
+        for step in [MAX_WPM - MIN_WPM + 1, u32::MAX] {
+            let r = AdaptRule {
+                step_wpm: step,
+                ..AdaptRule::default()
+            };
+            assert!(r.problem().is_some(), "step {step}");
+        }
+    }
+
+    #[test]
+    fn a_huge_step_never_overflows_or_turns_a_raise_into_a_drop() {
+        // The arithmetic's own guard, for a rule that skipped `problem`.
+        let rule = AdaptRule {
+            window: 1,
+            step_wpm: u32::MAX,
+            ..AdaptRule::default()
+        };
+        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, Some(rule));
+        assert_eq!(s.record(&score(0, 20), 0).unwrap().char_wpm, MAX_WPM);
+        let mut s = SpeedState::new(20, Farnsworth::Off, Level::Intermediate, Some(rule));
+        assert_eq!(s.record(&score(10, 20), 0).unwrap().char_wpm, MIN_WPM);
+        // Farnsworth: the effective speed closes up at once.
+        let mut s = SpeedState::new(20, Farnsworth::Wpm(10), Level::Intermediate, Some(rule));
+        let c = s.record(&score(0, 20), 0).unwrap();
+        assert_eq!((c.char_wpm, c.effective_wpm), (20, None));
+        let mut s = SpeedState::new(20, Farnsworth::Wpm(10), Level::Intermediate, Some(rule));
+        assert_eq!(
+            s.record(&score(10, 20), 0).unwrap().effective_wpm,
+            Some(MIN_WPM)
+        );
+    }
 
     #[test]
     fn four_clean_overs_raise_the_speed() {
