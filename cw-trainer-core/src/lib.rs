@@ -38,3 +38,4 @@
 pub use cat_morse;
 
 pub mod options;
+pub mod speed;
