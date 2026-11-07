@@ -302,6 +302,20 @@ fn quitting_between_qsos_or_before_the_first_ends_at_once() {
 }
 
 #[test]
+fn quitting_after_the_end_is_not_quitting_early() {
+    let opts = options(Kind::RagChew, Level::Intermediate, 1, 7);
+    let mut done = session(&opts);
+    drive_perfectly(&mut done);
+    done.quit();
+    assert_eq!(done.next_step().unwrap(), None);
+    let mut plain = session(&opts);
+    drive_perfectly(&mut plain);
+    let r = done.finish(None).record;
+    assert!(!r.quit_early);
+    assert_eq!(r, plain.finish(None).record);
+}
+
+#[test]
 fn submitting_with_no_over_waiting_is_an_error_that_changes_nothing() {
     let mut s = session(&options(Kind::RagChew, Level::Intermediate, 1, 7));
     assert_eq!(

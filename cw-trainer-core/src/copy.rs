@@ -502,7 +502,12 @@ impl CopySession {
     /// The operator quits. Valid at any step: a *them* over waiting for
     /// its outcome is dropped unrecorded, the next step ends the QSO under
     /// way (if any) with [`Step::QsoEnd`], and the one after is `None`.
+    /// Once the session has ended (`next_step` gave `None`) it does
+    /// nothing: the session was not cut short.
     pub fn quit(&mut self) {
+        if matches!(self.cursor, Cursor::Done) {
+            return;
+        }
         self.quit = true;
         self.pending = None;
     }
