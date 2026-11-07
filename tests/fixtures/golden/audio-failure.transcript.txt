@@ -1,0 +1,31 @@
+cw-trainer copy: ragchew contacts, intermediate, seed 7, 600 Hz, 20 wpm
+Playing to: Test speaker
+Type what you hear while it plays; Enter submits.
+Ctrl-R/F5 AGN (replay)   Ctrl-N/F6 skip   Esc/Ctrl-C quit
+
+--- QSO 1/2: ragchew ---
+
+  [QSO 1 over 1, 20 wpm]
+  copy> CQ CQ CQ DE KW0LJ KW0LJ KW0LJ K
+  sent   CQ CQ CQ DE KW0LJ KW0LJ KW0LJ K
+  copied CQ CQ CQ DE KW0LJ KW0LJ KW0LJ K
+  CER 0% (31 sent: 31 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KW0LJ DE KF0UWV KF0UWV <AR>
+
+  [QSO 1 over 3, 20 wpm]
+  copy> E KF0UWV DE KW0LJ GA TNX FER CALL <BT> UR RST 579 579 <BT> NAME BILL BILL <BT> QTH LAWRENCE, KS LAWRENCE, KS <BT> HW CPY? <AR> KF0UWV DE KW0LJ <KNE
+  sent   KF0UWV DE KW0LJ GA TNX FER CALL <BT> UR RST 579 579 <BT> NAME BILL BILL <BT> QTH LAWRENCE, KS LAWRENCE, KS <BT> HW CPY? <AR> KF0UWV DE KW0LJ ___<KN>
+  copied KF0UWV DE KW0LJ GA TNX FER CALL <BT> UR RST 579 579 <BT> NAME BILL BILL <BT> QTH LAWRENCE, KS LAWRENCE, KS <BT> HW CPY? <AR> KF0UWV DE KW0LJ <KNE
+                                                                                                                                                      ^^^^^^^
+  CER 3% (127 sent: 126 ok, 1 wrong, 0 missed, 3 extra)
+  you send> KW0LJ DE KF0UWV R TNX BILL <BT> UR RST 559 559 <BT> NAME BOB BOB <BT> QTH SIOUX FALLS SIOUX FALLS <BT> HW? <AR> KW0LJ DE KF0UWV <KN>
+
+  [QSO 1 over 5, 20 wpm]
+  copy>   [AGN]
+  copy> 
+=== Session summary (seed 7) ===
+  overs copied 2, skipped 0, AGN 0, quit early
+  CER 3% (158 sent: 157 ok, 1 wrong, 0 missed, 3 extra)
+  speed 20 wpm -> 20 wpm
+  weakest this session: <KN> 0%  L 100%  K 100%  W 100%  E 100%
+  weakest all time:     <KN> 0%  L 100%  K 100%  W 100%  E 100%

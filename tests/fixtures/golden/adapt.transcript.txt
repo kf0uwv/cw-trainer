@@ -1,0 +1,86 @@
+cw-trainer copy: ragchew contacts, intermediate, seed 7, 600 Hz, 20 wpm
+Playing to: Test speaker
+Type what you hear while it plays; Enter submits.
+Ctrl-R/F5 AGN (replay)   Ctrl-N/F6 skip   Esc/Ctrl-C quit
+
+--- QSO 1/2: ragchew ---
+
+  [QSO 1 over 1, 20 wpm]
+  copy> CQ CQ CQ DE KW0LJ KW0LJ KW0LJ K
+  sent   CQ CQ CQ DE KW0LJ KW0LJ KW0LJ K
+  copied CQ CQ CQ DE KW0LJ KW0LJ KW0LJ K
+  CER 0% (31 sent: 31 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KW0LJ DE KF0UWV KF0UWV <AR>
+
+  [QSO 1 over 3, 20 wpm]
+  copy> KF0UWV DE KW0LJ GA TNX FER CALL <BT> UR RST 579 579 <BT> NAME BILL BILL <BT> QTH LAWRENCE, KS LAWRENCE, KS <BT> HW CPY? <AR> KF0UWV DE KW0LJ <KN>
+  sent   KF0UWV DE KW0LJ GA TNX FER CALL <BT> UR RST 579 579 <BT> NAME BILL BILL <BT> QTH LAWRENCE, KS LAWRENCE, KS <BT> HW CPY? <AR> KF0UWV DE KW0LJ <KN>
+  copied KF0UWV DE KW0LJ GA TNX FER CALL <BT> UR RST 579 579 <BT> NAME BILL BILL <BT> QTH LAWRENCE, KS LAWRENCE, KS <BT> HW CPY? <AR> KF0UWV DE KW0LJ <KN>
+  CER 0% (127 sent: 127 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KW0LJ DE KF0UWV R TNX BILL <BT> UR RST 559 559 <BT> NAME BOB BOB <BT> QTH SIOUX FALLS SIOUX FALLS <BT> HW? <AR> KW0LJ DE KF0UWV <KN>
+
+  [QSO 1 over 5, 20 wpm]
+  copy> KF0UWV DE KW0LJ R FB BOB <BT> RIG IC-7610 PWR 100W ANT HEX BEAM <BT> WX WINDY 37F <BT> <AR> KF0UWV DE KW0LJ <KN>
+  sent   KF0UWV DE KW0LJ R FB BOB <BT> RIG IC-7610 PWR 100W ANT HEX BEAM <BT> WX WINDY 37F <BT> <AR> KF0UWV DE KW0LJ <KN>
+  copied KF0UWV DE KW0LJ R FB BOB <BT> RIG IC-7610 PWR 100W ANT HEX BEAM <BT> WX WINDY 37F <BT> <AR> KF0UWV DE KW0LJ <KN>
+  CER 0% (97 sent: 97 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KW0LJ DE KF0UWV R <BT> RIG IC-705 PWR 5W ANT INV V <BT> WX FOGGY 35F <BT> TNX FER QSO BILL 73 <AR> KW0LJ DE KF0UWV <KN>
+
+  [QSO 1 over 7, 20 wpm]
+  copy> KF0UWV DE KW0LJ TNX FER FB QSO BOB <BT> 73 ES CUL <SK> KF0UWV DE KW0LJ TU E E
+  sent   KF0UWV DE KW0LJ TNX FER FB QSO BOB <BT> 73 ES CUL <SK> KF0UWV DE KW0LJ TU E E
+  copied KF0UWV DE KW0LJ TNX FER FB QSO BOB <BT> 73 ES CUL <SK> KF0UWV DE KW0LJ TU E E
+  CER 0% (71 sent: 71 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KW0LJ DE KF0UWV TU 73 <SK> E E
+  speed now 22 wpm
+
+--- QSO 2/2: ragchew ---
+
+  [QSO 2 over 1, 22 wpm]
+  copy> CQ CQ DE K5VZJ/4 K5VZJ/4 K
+  sent   CQ CQ DE K5VZJ/4 K5VZJ/4 K
+  copied CQ CQ DE K5VZJ/4 K5VZJ/4 K
+  CER 0% (26 sent: 26 ok, 0 wrong, 0 missed, 0 extra)
+
+  [QSO 2 over 2, 22 wpm]
+  copy> CQ CQ DE K5VZJ/4 K5VZJ/4 K
+  sent   CQ CQ DE K5VZJ/4 K5VZJ/4 K
+  copied CQ CQ DE K5VZJ/4 K5VZJ/4 K
+  CER 0% (26 sent: 26 ok, 0 wrong, 0 missed, 0 extra)
+  you send> K5VZJ/4 DE KF0UWV KF0UWV <AR>
+
+  [QSO 2 over 4, 22 wpm]
+  copy> KF0UWV DE K5VZJ/4 GE TNX FER CALL <BT> UR RST 559 559 <BT> NAME MARY MARY <BT> QTH NASHVILLE, TN NASHVILLE, TN <BT> HW CPY? <AR> KF0UWV DE K5VZJ/4 <KN>
+  sent   KF0UWV DE K5VZJ/4 GE TNX FER CALL <BT> UR RST 559 559 <BT> NAME MARY MARY <BT> QTH NASHVILLE, TN NASHVILLE, TN <BT> HW CPY? <AR> KF0UWV DE K5VZJ/4 <KN>
+  copied KF0UWV DE K5VZJ/4 GE TNX FER CALL <BT> UR RST 559 559 <BT> NAME MARY MARY <BT> QTH NASHVILLE, TN NASHVILLE, TN <BT> HW CPY? <AR> KF0UWV DE K5VZJ/4 <KN>
+  CER 0% (133 sent: 133 ok, 0 wrong, 0 missed, 0 extra)
+  you send> K5VZJ/4 DE KF0UWV R TNX MARY <BT> UR RST 559 559 <BT> NAME DON DON <BT> QTH RAPID CITY RAPID CITY <BT> HW? <AR> K5VZJ/4 DE KF0UWV <KN>
+
+  [QSO 2 over 6, 22 wpm]
+  copy> KF0UWV DE K5VZJ/4 R FB DON <BT> RIG IC-7300 PWR 500W ANT LOOP <BT> WX RAIN 37F <BT> <AR> KF0UWV DE K5VZJ/4 <KN>
+  sent   KF0UWV DE K5VZJ/4 R FB DON <BT> RIG IC-7300 PWR 500W ANT LOOP <BT> WX RAIN 37F <BT> <AR> KF0UWV DE K5VZJ/4 <KN>
+  copied KF0UWV DE K5VZJ/4 R FB DON <BT> RIG IC-7300 PWR 500W ANT LOOP <BT> WX RAIN 37F <BT> <AR> KF0UWV DE K5VZJ/4 <KN>
+  CER 0% (96 sent: 96 ok, 0 wrong, 0 missed, 0 extra)
+  you send> K5VZJ/4 DE KF0UWV PSE RPT RIG? <KN>
+
+  [QSO 2 over 8, 22 wpm]
+  copy> KF0UWV DE K5VZJ/4 RIG IC-7300 IC-7300 <KN>
+  sent   KF0UWV DE K5VZJ/4 RIG IC-7300 IC-7300 <KN>
+  copied KF0UWV DE K5VZJ/4 RIG IC-7300 IC-7300 <KN>
+  CER 0% (39 sent: 39 ok, 0 wrong, 0 missed, 0 extra)
+  you send> K5VZJ/4 DE KF0UWV R <BT> RIG FTDX10 PWR 100W ANT G5RV <BT> WX OVERCAST 60F <BT> TNX FER QSO MARY 73 <AR> K5VZJ/4 DE KF0UWV <KN>
+
+  [QSO 2 over 10, 22 wpm]
+  copy> KF0UWV DE K5VZJ/4 TNX FER FB QSO DON <BT> 73 ES CUL <SK> KF0UWV DE K5VZJ/4 TU E E
+  sent   KF0UWV DE K5VZJ/4 TNX FER FB QSO DON <BT> 73 ES CUL <SK> KF0UWV DE K5VZJ/4 TU E E
+  copied KF0UWV DE K5VZJ/4 TNX FER FB QSO DON <BT> 73 ES CUL <SK> KF0UWV DE K5VZJ/4 TU E E
+  CER 0% (75 sent: 75 ok, 0 wrong, 0 missed, 0 extra)
+  you send> K5VZJ/4 DE KF0UWV TU 73 <SK> E E
+  speed now 24 wpm
+
+=== Session summary (seed 7) ===
+  overs copied 10, skipped 0, AGN 0
+  CER 0% (721 sent: 721 ok, 0 wrong, 0 missed, 0 extra)
+  speed 20 wpm -> 24 wpm
+  weakest this session: K 100%  E 100%  0 100%  W 100%  L 100%
+  weakest all time:     K 100%  E 100%  0 100%  W 100%  L 100%

@@ -93,6 +93,8 @@ pub mod tests {
         pub rate: u32,
         pub played: Vec<f32>,
         pub clears: u32,
+        /// `played.len()` at each clear: where each play of an over ends.
+        pub clear_marks: Vec<usize>,
         pub max_write: usize,
         pub fail_after: Option<usize>,
         pub underrun_seq: std::cell::RefCell<std::collections::VecDeque<u64>>,
@@ -105,6 +107,7 @@ pub mod tests {
                 rate,
                 played: Vec::new(),
                 clears: 0,
+                clear_marks: Vec::new(),
                 max_write: usize::MAX,
                 fail_after: None,
                 underrun_seq: Default::default(),
@@ -132,6 +135,7 @@ pub mod tests {
         }
         fn clear(&mut self) {
             self.clears += 1;
+            self.clear_marks.push(self.played.len());
         }
         fn underruns(&self) -> u64 {
             if let Some(v) = self.underrun_seq.borrow_mut().pop_front() {

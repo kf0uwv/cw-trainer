@@ -1,0 +1,35 @@
+cw-trainer copy: pota contacts, beginner, seed 3, 600 Hz, 20 wpm (Farnsworth 10)
+Playing to: Test speaker
+Type what you hear while it plays; Enter submits.
+Ctrl-R/F5 AGN (replay)   Ctrl-N/F6 skip   Esc/Ctrl-C quit
+
+--- QSO 1/1: pota ---
+
+  [QSO 1 over 1, 20 wpm]
+  copy> CQ POTA CQ POTA DE KN7NK KN7NK K
+  sent   CQ POTA CQ POTA DE KN7NK KN7NK K
+  copied CQ POTA CQ POTA DE KN7NK KN7NK K
+  CER 0% (32 sent: 32 ok, 0 wrong, 0 missed, 0 extra)
+  you send> KF0UWV
+
+  [QSO 1 over 3, 20 wpm]
+  copy> E KF0UWV GA UR 5NN 5NN WA WA BE
+  sent   KF0UWV GA UR 5NN 5NN WA WA BK
+  copied KF0UWV GA UR 5NN 5NN WA WA BE
+                                     ^
+  CER 3% (29 sent: 28 ok, 1 wrong, 0 missed, 0 extra)
+  you send> BK TU UR 5NN 5NN NE NE 72 BK
+
+  [QSO 1 over 5, 20 wpm]
+  copy>   [AGN]
+  copy> TU 72 EE
+  sent   TU 72 EE
+  copied TU 72 EE
+  CER 0% (8 sent: 8 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+
+=== Session summary (seed 3) ===
+  overs copied 3, skipped 0, AGN 1
+  CER 1% (69 sent: 68 ok, 1 wrong, 0 missed, 0 extra)
+  speed 20 wpm (Farnsworth 10) -> 20 wpm (Farnsworth 10)
+  weakest this session: K 86%  N 100%  A 100%  7 100%  E 100%
+  weakest all time:     K 86%  N 100%  A 100%  7 100%  E 100%

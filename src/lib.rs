@@ -51,6 +51,9 @@ pub mod term;
 pub mod time;
 pub mod view;
 
+#[cfg(test)]
+mod golden;
+
 use std::str::FromStr;
 
 use cat_morse::scenario::Difficulty;

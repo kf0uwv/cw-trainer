@@ -1,0 +1,329 @@
+cw-trainer copy: pileup contacts, advanced, seed 11, 600 Hz, 20 wpm
+Playing to: Test speaker
+Type what you hear while it plays; Enter submits.
+Ctrl-R/F5 AGN (replay)   Ctrl-N/F6 skip   Esc/Ctrl-C quit
+
+--- QSO 1/2: pileup ---
+  you send> CQ CQ DE KF0UWV KF0UWV K
+
+  [QSO 1 over 2, 22 wpm] several stations: copy everything you hear, any order
+  copy> 9A2DSC ER1PDB OO5TZE OO5TZE FP5FMZ FP5FMZ FT4JE PY5WCP PY5WCP PU2UZV PU2UZV
+  #1 sent   PU2UZV
+     copied PU2UZV
+  #2 sent   PU2UZV
+     copied PU2UZV
+  #3 sent   PY5WCP
+     copied PY5WCP
+  #4 sent   PY5WCP
+     copied PY5WCP
+  #5 sent   FT4JE
+     copied FT4JE
+  #6 sent   FP5FMZ
+     copied FP5FMZ
+  #7 sent   FP5FMZ
+     copied FP5FMZ
+  #8 sent   OO5TZE
+     copied OO5TZE
+  #9 sent   OO5TZE
+     copied OO5TZE
+  #10 sent   ER1PDB
+      copied ER1PDB
+  #11 sent   9A2DSC
+      copied 9A2DSC
+  CER 0% (65 sent: 65 ok, 0 wrong, 0 missed, 0 extra)
+  you send> ?FMZ
+
+  [QSO 1 over 4, 20 wpm]
+  copy> E FP5FMZ FP5FME
+  sent   FP5FMZ FP5FMZ
+  copied FP5FMZ FP5FME
+                     ^
+  CER 8% (13 sent: 12 ok, 1 wrong, 0 missed, 0 extra)
+  you send> FP5FMZ 5NN 4
+
+  [QSO 1 over 6, 20 wpm]
+  copy>   [AGN]
+  copy> TU 5NN 5
+  sent   TU 5NN 5
+  copied TU 5NN 5
+  CER 0% (8 sent: 8 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+  you send> TU KF0UWV QRZ?
+
+  [QSO 1 over 8, 22 wpm] several stations: copy everything you hear, any order
+  copy>   [skipped]
+  you send> ER1?
+
+  [QSO 1 over 10, 23 wpm]
+  copy> ER1PDB ER1
+  sent   ER1PDB ER1PDB
+  copied ER1PDB ER1___
+                   ^^^
+  CER 23% (13 sent: 10 ok, 0 wrong, 3 missed, 0 extra)
+  you send> ER1PDB 5NN 4
+
+  [QSO 1 over 12, 23 wpm]
+  copy> TU 5NN 16 QRZ
+  sent   TU 5NN 16____
+  copied TU 5NN 16 QRZ
+                  ^^^^
+  CER 44% (9 sent: 9 ok, 0 wrong, 0 missed, 4 extra)
+  you send> TU KF0UWV QRZ?
+
+  [QSO 1 over 14, 22 wpm] several stations: copy everything you hear, any order
+  copy> 9A2DSC 9A2DSC OO5TZE FT4JE FT4JE PY5WCP PY5WCP PU2UZV
+  #1 sent   PU2UZV
+     copied PU2UZV
+  #2 sent   PY5WCP
+     copied PY5WCP
+  #3 sent   PY5WCP
+     copied PY5WCP
+  #4 sent   FT4JE
+     copied FT4JE
+  #5 sent   FT4JE
+     copied FT4JE
+  #6 sent   OO5TZE
+     copied OO5TZE
+  #7 sent   9A2DSC
+     copied 9A2DSC
+  #8 sent   9A2DSC
+     copied 9A2DSC
+  CER 0% (46 sent: 46 ok, 0 wrong, 0 missed, 0 extra)
+  you send> ?4JE
+
+  [QSO 1 over 16, 19 wpm]
+  copy> E FT4JE FT4JT
+  sent   FT4JE FT4JE
+  copied FT4JE FT4JT
+                   ^
+  CER 9% (11 sent: 10 ok, 1 wrong, 0 missed, 0 extra)
+  you send> FT4JE 5NN 4
+
+  [QSO 1 over 18, 19 wpm]
+  copy>   [AGN]
+  copy> TU 5NN 39
+  sent   TU 5NN 39
+  copied TU 5NN 39
+  CER 0% (9 sent: 9 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+  you send> TU KF0UWV QRZ?
+
+  [QSO 1 over 20, 22 wpm] several stations: copy everything you hear, any order
+  copy>   [skipped]
+  you send> PU2UZV 5NN 4
+
+  [QSO 1 over 22, 22 wpm]
+  copy> TU 5NN
+  sent   TU 5NN 11
+  copied TU 5NN___
+               ^^^
+  CER 33% (9 sent: 6 ok, 0 wrong, 3 missed, 0 extra)
+  you send> TU KF0UWV QRZ?
+
+  [QSO 1 over 24, 21 wpm] several stations: copy everything you hear, any order
+  copy> 9A2DSC OO5TZE OO5TZE PY5WCP PY5WCP QRZ
+  #1 sent   PY5WCP
+     copied PY5WCP
+  #2 sent   PY5WCP
+     copied PY5WCP
+  #3 sent   OO5TZE
+     copied OO5TZE
+  #4 sent   OO5TZE
+     copied OO5TZE
+  #5 sent   9A2DSC
+     copied 9A2DSC
+  +  sent   ___
+     copied QRZ
+            ^^^
+  CER 10% (30 sent: 30 ok, 0 wrong, 0 missed, 3 extra)
+  you send> 9A2DSC 5NN 4
+
+  [QSO 1 over 26, 21 wpm]
+  copy> R 5NN 15 TU
+  sent   R 5NN 15 TU
+  copied R 5NN 15 TU
+  CER 0% (11 sent: 11 ok, 0 wrong, 0 missed, 0 extra)
+  you send> TU KF0UWV QRZ?
+
+  [QSO 1 over 28, 21 wpm] several stations: copy everything you hear, any order
+  copy> E OO5TZE OO5TZE PY5WCE
+  #1 sent   PY5WCP
+     copied PY5WCE
+                 ^
+  #2 sent   OO5TZE
+     copied OO5TZE
+  #3 sent   OO5TZE
+     copied OO5TZE
+  CER 6% (18 sent: 17 ok, 1 wrong, 0 missed, 0 extra)
+  you send> ?TZE
+
+  [QSO 1 over 30, 20 wpm]
+  copy>   [AGN]
+  copy> OO5TZE OO5TZE
+  sent   OO5TZE OO5TZE
+  copied OO5TZE OO5TZE
+  CER 0% (13 sent: 13 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+  you send> OO5TZE 5NN 4
+
+  [QSO 1 over 32, 20 wpm]
+  copy>   [skipped]
+  you send> TU KF0UWV QRZ?
+
+  [QSO 1 over 34, 21 wpm]
+  copy> PY5
+  sent   PY5WCP
+  copied PY5___
+            ^^^
+  CER 50% (6 sent: 3 ok, 0 wrong, 3 missed, 0 extra)
+  you send> PY5WCP 5NN 4
+
+  [QSO 1 over 36, 21 wpm]
+  copy> TU 5NN 11 QRZ
+  sent   TU 5NN 11____
+  copied TU 5NN 11 QRZ
+                  ^^^^
+  CER 44% (9 sent: 9 ok, 0 wrong, 0 missed, 4 extra)
+  you send> AGN?
+
+  [QSO 1 over 38, 21 wpm]
+  copy> 5NN 11 11
+  sent   5NN 11 11
+  copied 5NN 11 11
+  CER 0% (9 sent: 9 ok, 0 wrong, 0 missed, 0 extra)
+  you send> TU KF0UWV QRT
+
+--- QSO 2/2: pileup ---
+  you send> CQ CQ DE KF0UWV KF0UWV K
+
+  [QSO 2 over 2, 23 wpm] several stations: copy everything you hear, any order
+  copy> E 5Z4OKK CY9VTV CY9VTV GI1MAY GI1MAY PE1RB IW1EBE
+  #1 sent   IW1EBJ
+     copied IW1EBE
+                 ^
+  #2 sent   PE1RB
+     copied PE1RB
+  #3 sent   GI1MAY
+     copied GI1MAY
+  #4 sent   GI1MAY
+     copied GI1MAY
+  #5 sent   CY9VTV
+     copied CY9VTV
+  #6 sent   CY9VTV
+     copied CY9VTV
+  #7 sent   5Z4OKK
+     copied 5Z4OKK
+  CER 2% (41 sent: 40 ok, 1 wrong, 0 missed, 0 extra)
+  you send> GI1?
+
+  [QSO 2 over 4, 21 wpm]
+  copy>   [AGN]
+  copy> GI1MAY GI1MAY
+  sent   GI1MAY GI1MAY
+  copied GI1MAY GI1MAY
+  CER 0% (13 sent: 13 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+  you send> GI1MAY 5NN 4
+
+  [QSO 2 over 6, 21 wpm]
+  copy>   [skipped]
+  you send> AGN?
+
+  [QSO 2 over 8, 21 wpm]
+  copy> 5NN 14
+  sent   5NN 14 14
+  copied 5NN___ 14
+            ^^^
+  CER 33% (9 sent: 6 ok, 0 wrong, 3 missed, 0 extra)
+  you send> TU KF0UWV QRZ?
+
+  [QSO 2 over 10, 23 wpm] several stations: copy everything you hear, any order
+  copy> 5Z4OKK 5Z4OKK CY9VTV PE1RB PE1RB IW1EBJ QRZ
+  #1 sent   IW1EBJ
+     copied IW1EBJ
+  #2 sent   PE1RB
+     copied PE1RB
+  #3 sent   PE1RB
+     copied PE1RB
+  #4 sent   CY9VTV
+     copied CY9VTV
+  #5 sent   5Z4OKK
+     copied 5Z4OKK
+  #6 sent   5Z4OKK
+     copied 5Z4OKK
+  +  sent   ___
+     copied QRZ
+            ^^^
+  CER 9% (34 sent: 34 ok, 0 wrong, 0 missed, 3 extra)
+  you send> CY9VTV 5NN 4
+
+  [QSO 2 over 12, 18 wpm]
+  copy> TU 5NN 5
+  sent   TU 5NN 5
+  copied TU 5NN 5
+  CER 0% (8 sent: 8 ok, 0 wrong, 0 missed, 0 extra)
+  you send> TU KF0UWV QRZ?
+
+  [QSO 2 over 14, 23 wpm] several stations: copy everything you hear, any order
+  copy> E 5Z4OKK 5Z4OKK PE1RB PE1RB IW1EBJ IW1EBE
+  #1 sent   IW1EBJ
+     copied IW1EBJ
+  #2 sent   IW1EBJ
+     copied IW1EBE
+                 ^
+  #3 sent   PE1RB
+     copied PE1RB
+  #4 sent   PE1RB
+     copied PE1RB
+  #5 sent   5Z4OKK
+     copied 5Z4OKK
+  #6 sent   5Z4OKK
+     copied 5Z4OKK
+  CER 3% (34 sent: 33 ok, 1 wrong, 0 missed, 0 extra)
+  you send> 5Z4OKK 5NN 4
+
+  [QSO 2 over 16, 18 wpm]
+  copy>   [AGN]
+  copy> TU 5NN 37
+  sent   TU 5NN 37
+  copied TU 5NN 37
+  CER 0% (9 sent: 9 ok, 0 wrong, 0 missed, 0 extra), 1 AGN
+  you send> TU KF0UWV QRZ?
+
+  [QSO 2 over 18, 23 wpm] several stations: copy everything you hear, any order
+  copy>   [skipped]
+  you send> PE1RB 5NN 4
+
+  [QSO 2 over 20, 24 wpm]
+  copy> TU 5NN
+  sent   TU 5NN 14
+  copied TU 5NN___
+               ^^^
+  CER 33% (9 sent: 6 ok, 0 wrong, 3 missed, 0 extra)
+  you send> TU KF0UWV QRZ?
+
+  [QSO 2 over 22, 23 wpm]
+  copy> IW1EBJ QRZ
+  sent   IW1EBJ____
+  copied IW1EBJ QRZ
+               ^^^^
+  CER 67% (6 sent: 6 ok, 0 wrong, 0 missed, 4 extra)
+  you send> IW1?
+
+  [QSO 2 over 24, 23 wpm]
+  copy> IW1EBJ IW1EBJ
+  sent   IW1EBJ IW1EBJ
+  copied IW1EBJ IW1EBJ
+  CER 0% (13 sent: 13 ok, 0 wrong, 0 missed, 0 extra)
+  you send> IW1EBJ 5NN 4
+
+  [QSO 2 over 26, 23 wpm]
+  copy> E R 5NN 15 TE
+  sent   R 5NN 15 TU
+  copied R 5NN 15 TE
+                   ^
+  CER 9% (11 sent: 10 ok, 1 wrong, 0 missed, 0 extra)
+  you send> TU KF0UWV QRT
+
+=== Session summary (seed 11) ===
+  overs copied 27, skipped 5, AGN 5
+  CER 8% (466 sent: 445 ok, 6 wrong, 15 missed, 18 extra)
+  speed 20 wpm -> 20 wpm
+  weakest this session: J 83%  4 85%  D 86%  1 88%  P 90%
+  weakest all time:     J 83%  4 85%  D 86%  1 88%  P 90%

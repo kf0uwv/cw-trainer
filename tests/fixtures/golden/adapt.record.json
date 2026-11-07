@@ -1,0 +1,229 @@
+{
+  "version": 1,
+  "started": "2026-11-07T12:00:00Z",
+  "seed": 7,
+  "kind": "ragchew",
+  "level": "intermediate",
+  "call": "KF0UWV",
+  "pitch_hz": 600.0,
+  "audio_out": "Test speaker",
+  "start_speed": {
+    "char_wpm": 20,
+    "effective_wpm": null
+  },
+  "end_speed": {
+    "char_wpm": 24,
+    "effective_wpm": null
+  },
+  "overs": [
+    {
+      "qso": 1,
+      "kind": "ragchew",
+      "expected": [
+        "CQ CQ CQ DE KW0LJ KW0LJ KW0LJ K"
+      ],
+      "copied": "CQ CQ CQ DE KW0LJ KW0LJ KW0LJ K",
+      "score": {
+        "expected": 31,
+        "matches": 31,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 20.0,
+      "effective_wpm": 20.0
+    },
+    {
+      "qso": 1,
+      "kind": "ragchew",
+      "expected": [
+        "KF0UWV DE KW0LJ GA TNX FER CALL <BT> UR RST 579 579 <BT> NAME BILL BILL <BT> QTH LAWRENCE, KS LAWRENCE, KS <BT> HW CPY? <AR> KF0UWV DE KW0LJ <KN>"
+      ],
+      "copied": "KF0UWV DE KW0LJ GA TNX FER CALL <BT> UR RST 579 579 <BT> NAME BILL BILL <BT> QTH LAWRENCE, KS LAWRENCE, KS <BT> HW CPY? <AR> KF0UWV DE KW0LJ <KN>",
+      "score": {
+        "expected": 127,
+        "matches": 127,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 20.0,
+      "effective_wpm": 20.0
+    },
+    {
+      "qso": 1,
+      "kind": "ragchew",
+      "expected": [
+        "KF0UWV DE KW0LJ R FB BOB <BT> RIG IC-7610 PWR 100W ANT HEX BEAM <BT> WX WINDY 37F <BT> <AR> KF0UWV DE KW0LJ <KN>"
+      ],
+      "copied": "KF0UWV DE KW0LJ R FB BOB <BT> RIG IC-7610 PWR 100W ANT HEX BEAM <BT> WX WINDY 37F <BT> <AR> KF0UWV DE KW0LJ <KN>",
+      "score": {
+        "expected": 97,
+        "matches": 97,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 20.0,
+      "effective_wpm": 20.0
+    },
+    {
+      "qso": 1,
+      "kind": "ragchew",
+      "expected": [
+        "KF0UWV DE KW0LJ TNX FER FB QSO BOB <BT> 73 ES CUL <SK> KF0UWV DE KW0LJ TU E E"
+      ],
+      "copied": "KF0UWV DE KW0LJ TNX FER FB QSO BOB <BT> 73 ES CUL <SK> KF0UWV DE KW0LJ TU E E",
+      "score": {
+        "expected": 71,
+        "matches": 71,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 20.0,
+      "effective_wpm": 20.0
+    },
+    {
+      "qso": 2,
+      "kind": "ragchew",
+      "expected": [
+        "CQ CQ DE K5VZJ/4 K5VZJ/4 K"
+      ],
+      "copied": "CQ CQ DE K5VZJ/4 K5VZJ/4 K",
+      "score": {
+        "expected": 26,
+        "matches": 26,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 22.0,
+      "effective_wpm": 22.0
+    },
+    {
+      "qso": 2,
+      "kind": "ragchew",
+      "expected": [
+        "CQ CQ DE K5VZJ/4 K5VZJ/4 K"
+      ],
+      "copied": "CQ CQ DE K5VZJ/4 K5VZJ/4 K",
+      "score": {
+        "expected": 26,
+        "matches": 26,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 22.0,
+      "effective_wpm": 22.0
+    },
+    {
+      "qso": 2,
+      "kind": "ragchew",
+      "expected": [
+        "KF0UWV DE K5VZJ/4 GE TNX FER CALL <BT> UR RST 559 559 <BT> NAME MARY MARY <BT> QTH NASHVILLE, TN NASHVILLE, TN <BT> HW CPY? <AR> KF0UWV DE K5VZJ/4 <KN>"
+      ],
+      "copied": "KF0UWV DE K5VZJ/4 GE TNX FER CALL <BT> UR RST 559 559 <BT> NAME MARY MARY <BT> QTH NASHVILLE, TN NASHVILLE, TN <BT> HW CPY? <AR> KF0UWV DE K5VZJ/4 <KN>",
+      "score": {
+        "expected": 133,
+        "matches": 133,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 22.0,
+      "effective_wpm": 22.0
+    },
+    {
+      "qso": 2,
+      "kind": "ragchew",
+      "expected": [
+        "KF0UWV DE K5VZJ/4 R FB DON <BT> RIG IC-7300 PWR 500W ANT LOOP <BT> WX RAIN 37F <BT> <AR> KF0UWV DE K5VZJ/4 <KN>"
+      ],
+      "copied": "KF0UWV DE K5VZJ/4 R FB DON <BT> RIG IC-7300 PWR 500W ANT LOOP <BT> WX RAIN 37F <BT> <AR> KF0UWV DE K5VZJ/4 <KN>",
+      "score": {
+        "expected": 96,
+        "matches": 96,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 22.0,
+      "effective_wpm": 22.0
+    },
+    {
+      "qso": 2,
+      "kind": "ragchew",
+      "expected": [
+        "KF0UWV DE K5VZJ/4 RIG IC-7300 IC-7300 <KN>"
+      ],
+      "copied": "KF0UWV DE K5VZJ/4 RIG IC-7300 IC-7300 <KN>",
+      "score": {
+        "expected": 39,
+        "matches": 39,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 22.0,
+      "effective_wpm": 22.0
+    },
+    {
+      "qso": 2,
+      "kind": "ragchew",
+      "expected": [
+        "KF0UWV DE K5VZJ/4 TNX FER FB QSO DON <BT> 73 ES CUL <SK> KF0UWV DE K5VZJ/4 TU E E"
+      ],
+      "copied": "KF0UWV DE K5VZJ/4 TNX FER FB QSO DON <BT> 73 ES CUL <SK> KF0UWV DE K5VZJ/4 TU E E",
+      "score": {
+        "expected": 75,
+        "matches": 75,
+        "substitutions": 0,
+        "deletions": 0,
+        "insertions": 0
+      },
+      "agn": 0,
+      "skipped": false,
+      "audio_gaps": 0,
+      "char_wpm": 22.0,
+      "effective_wpm": 22.0
+    }
+  ],
+  "total": {
+    "expected": 721,
+    "matches": 721,
+    "substitutions": 0,
+    "deletions": 0,
+    "insertions": 0
+  },
+  "quit_early": false,
+  "ended_by_error": null
+}

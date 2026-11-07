@@ -1,0 +1,27 @@
+cw-trainer copy: ragchew contacts, beginner, seed 8, 600 Hz, 20 wpm
+Playing to: Test speaker
+Type what you hear while it plays; Enter submits.
+Ctrl-R/F5 AGN (replay)   Ctrl-N/F6 skip   Esc/Ctrl-C quit
+
+--- QSO 1/2: ragchew ---
+
+  [QSO 1 over 1, 20 wpm]
+  copy> CQ CQ CQ DE K8AUF K8AUF <AR> K
+  sent   CQ CQ CQ DE K8AUF K8AUF <AR> K
+  copied CQ CQ CQ DE K8AUF K8AUF <AR> K
+  CER 0% (27 sent: 27 ok, 0 wrong, 0 missed, 0 extra)
+  you send> K8AUF DE KF0UWV KF0UWV K
+
+  [QSO 1 over 3, 20 wpm]
+  copy> KF0UWV DE K8AUF GD TNX FER CALL <BT> UR RST 569 569 <BT> NAME MIKE MIKE <BT> QTH MARQUETTE, MI MARQUETTE, MI <BT> HW CPY? <AR> KF0UWV DE K8AUF <KN>
+  sent   KF0UWV DE K8AUF GD TNX FER CALL <BT> UR RST 569 569 <BT> NAME MIKE MIKE <BT> QTH MARQUETTE, MI MARQUETTE, MI <BT> HW CPY? <AR> KF0UWV DE K8AUF <KN>
+  copied KF0UWV DE K8AUF GD TNX FER CALL <BT> UR RST 569 569 <BT> NAME MIKE MIKE <BT> QTH MARQUETTE, MI MARQUETTE, MI <BT> HW CPY? <AR> KF0UWV DE K8AUF <KN>
+  CER 0% (129 sent: 129 ok, 0 wrong, 0 missed, 0 extra)
+  you send> K8AUF DE KF0UWV R TNX MIKE <BT> UR RST 569 569 <BT> NAME JEFF JEFF <BT> QTH RAPID CITY RAPID CITY <BT> HW? <AR> K8AUF DE KF0UWV <KN>
+
+=== Session summary (seed 8) ===
+  overs copied 2, skipped 0, AGN 0, quit early
+  CER 0% (156 sent: 156 ok, 0 wrong, 0 missed, 0 extra)
+  speed 20 wpm -> 20 wpm
+  weakest this session: E 100%  K 100%  U 100%  A 100%  F 100%
+  weakest all time:     E 100%  K 100%  U 100%  A 100%  F 100%
