@@ -81,6 +81,7 @@
 
 pub use cat_morse;
 
+pub mod converse;
 pub mod copy;
 pub mod error;
 pub mod options;

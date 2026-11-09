@@ -152,7 +152,10 @@ mod tests {
 
         // Text that cannot be keyed is an error naming it.
         let e = text_channel("NAME ~", sig, &d, 8000, 600.0, 4).unwrap_err();
-        assert!(matches!(e, CoreError::Key { ref text, .. } if text == "NAME ~"), "{e}");
+        assert!(
+            matches!(e, CoreError::Key { ref text, .. } if text == "NAME ~"),
+            "{e}"
+        );
     }
 
     #[test]
