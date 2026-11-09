@@ -23,6 +23,7 @@ use cat_morse::scenario::{BandConditions, QrmOdds, QrnOdds, QsbOdds};
 use cat_morse::Score;
 use serde::{Deserialize, Serialize};
 
+use crate::converse::Checks;
 use crate::speed::{AdaptRule, SpeedSetting};
 
 /// One over's result, as kept in the history.
@@ -72,6 +73,29 @@ pub struct SessionRecord {
     /// The band conditions, when they were not the level's own.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub band: Option<RecordedBand>,
+    /// A conversation's overs, both stations', in order (absent for a
+    /// copy session, so a copy record writes what it always did).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub turns: Vec<ConverseTurn>,
+}
+
+/// One over of a conversation, as kept in the history.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ConverseTurn {
+    /// The operator's over (else the other station's).
+    pub you: bool,
+    /// What was sent: the station's text, or the operator's as decoded.
+    pub text: String,
+    /// How the operator's over read (absent for the station's).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub checks: Option<Checks>,
+    /// The station's over was a repeat asked for (`AGN`).
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub repeat: bool,
+}
+
+fn is_false(b: &bool) -> bool {
+    !*b
 }
 
 /// Band conditions as a record keeps them: cat-morse's

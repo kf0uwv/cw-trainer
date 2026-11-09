@@ -424,6 +424,7 @@ pub mod tests {
             ended_by_error: None,
             adapt_rule: None,
             band: None,
+            turns: Vec::new(),
         }
     }
 

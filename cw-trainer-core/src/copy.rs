@@ -38,14 +38,16 @@
 
 use std::time::Duration;
 
-use cat_morse::scenario::{band_channel, Transmission};
+use cat_morse::scenario::{band_channel, BandConditions, Transmission};
 use cat_morse::{
     align, align_unordered, timing, Alignment, Channel, ChannelRenderer, CharStats, Fist, Score,
     ScoreOptions, UnorderedAlignment,
 };
 
 use crate::error::CoreError;
-use crate::options::{CopyOptions, Farnsworth, MAX_PITCH_HZ, MAX_WPM, MIN_PITCH_HZ, MIN_WPM};
+use crate::options::{
+    CopyOptions, Farnsworth, Level, MAX_PITCH_HZ, MAX_WPM, MIN_PITCH_HZ, MIN_WPM,
+};
 use crate::over::over_channel;
 use crate::plan::{expected_for, over_indices, plan_qso, OverAt, QsoPlan};
 use crate::record::{OverResult, RecordedBand, SessionRecord};
@@ -111,6 +113,11 @@ pub struct OverAudio {
 }
 
 impl OverAudio {
+    /// Audio for a band built here (a conversation's composed overs).
+    pub(crate) fn from_channel(channel: Channel) -> Self {
+        OverAudio { channel }
+    }
+
     /// A fresh renderer from the start. For AGN, call it again: the PCM
     /// is identical.
     pub fn renderer(&self) -> Result<ChannelRenderer, CoreError> {
@@ -229,7 +236,7 @@ const _: () = {
     send::<OverAudio>();
 };
 
-fn check_rate(hz: u32) -> Result<(), CoreError> {
+pub(crate) fn check_rate(hz: u32) -> Result<(), CoreError> {
     if hz < MIN_SAMPLE_RATE_HZ {
         return Err(CoreError::SampleRate(hz));
     }
@@ -237,23 +244,41 @@ fn check_rate(hz: u32) -> Result<(), CoreError> {
 }
 
 fn check_options(opts: &CopyOptions) -> Result<(), CoreError> {
-    let p = opts.pitch_hz;
+    check_settings(
+        opts.level,
+        opts.pitch_hz,
+        opts.adapt.as_ref(),
+        opts.band,
+        opts.farnsworth,
+    )
+}
+
+/// The checks every session makes of its settings: the pitch, the
+/// adaptive rule, the band conditions and a Farnsworth speed.
+pub(crate) fn check_settings(
+    level: Level,
+    pitch_hz: f32,
+    adapt: Option<&AdaptRule>,
+    band: Option<BandConditions>,
+    farnsworth: Farnsworth,
+) -> Result<(), CoreError> {
+    let p = pitch_hz;
     if !(p.is_finite() && (MIN_PITCH_HZ..=MAX_PITCH_HZ).contains(&p)) {
         return Err(CoreError::InvalidOptions(format!(
             "pitch {p} Hz is outside {MIN_PITCH_HZ}-{MAX_PITCH_HZ} Hz"
         )));
     }
-    if let Some(why) = opts.adapt.as_ref().and_then(AdaptRule::problem) {
+    if let Some(why) = adapt.and_then(AdaptRule::problem) {
         return Err(CoreError::InvalidOptions(why));
     }
-    if let Some(band) = opts.band {
+    if let Some(band) = band {
         // cat-morse checks band conditions as it builds a band.
-        let mut d = opts.level.difficulty();
+        let mut d = level.difficulty();
         d.band = band;
-        band_channel(&d, Vec::new(), MIN_SAMPLE_RATE_HZ, opts.pitch_hz, 0)
+        band_channel(&d, Vec::new(), MIN_SAMPLE_RATE_HZ, pitch_hz, 0)
             .map_err(|e| CoreError::InvalidOptions(format!("band conditions: {e}")))?;
     }
-    if let Farnsworth::Wpm(w) = opts.farnsworth {
+    if let Farnsworth::Wpm(w) = farnsworth {
         if !(MIN_WPM..=MAX_WPM).contains(&w) {
             return Err(CoreError::InvalidOptions(format!(
                 "Farnsworth speed {w} wpm is outside {MIN_WPM}-{MAX_WPM} wpm"
@@ -545,6 +570,7 @@ impl CopySession {
                     .band
                     .filter(|b| *b != opts.level.difficulty().band)
                     .map(RecordedBand::from),
+                turns: Vec::new(),
             },
             session_stats: self.session_stats,
         }
