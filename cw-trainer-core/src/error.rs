@@ -59,6 +59,14 @@ pub enum CoreError {
     /// The session already failed; only `finish` is left.
     #[error("the session has already failed")]
     Failed,
+    /// [`next_turn`](crate::converse::ConversationSession::next_turn) while the
+    /// operator's reply is still awaited.
+    #[error("the operator's reply is still awaited")]
+    ReplyPending,
+    /// [`reply`](crate::converse::ConversationSession::reply) when it is
+    /// not the operator's turn.
+    #[error("it is not the operator's turn")]
+    NotYourTurn,
 }
 
 #[cfg(test)]
@@ -117,5 +125,17 @@ mod tests {
     #[test]
     fn a_line_with_no_station() {
         assert_eq!(CoreError::NoStation.to_string(), "a line with no station");
+    }
+
+    #[test]
+    fn a_conversation_out_of_turn() {
+        assert_eq!(
+            CoreError::ReplyPending.to_string(),
+            "the operator's reply is still awaited"
+        );
+        assert_eq!(
+            CoreError::NotYourTurn.to_string(),
+            "it is not the operator's turn"
+        );
     }
 }
